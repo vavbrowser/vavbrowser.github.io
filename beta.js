@@ -1,38 +1,41 @@
 const $ = id => document.getElementById(id);
 let tabs = [], activeTabId = null, nextTabId = 1;
 
-// Storage keys, including functional extensions data
+// Added EXT tracking to persistent localStorage map structures
 const STORAGE = { BOOK: 'mc_bmk', HIST: 'mc_hist', EXT: 'mc_ext' };
 
 const searchSel = $('searchEngine'), 
       addr = $('address'), 
       status = $('status'), 
       webArea = $('webviewArea'), 
-      loading = $('loadingBar'),
-      bookmarksEl = $('bookmarksList'), 
+      loading = $('loadingBar');
+      
+const bookmarksEl = $('bookmarksList'), 
       historyEl = $('historyList'), 
       addrFav = $('addrFavicon');
 
 // Sync actively loaded extensions out of localStorage on startup
 let extensions = JSON.parse(localStorage.getItem(STORAGE.EXT) || '[]');
 
-function faviconFor(url) {
-  try {
-    if (url.startsWith('vav://')) return "";
-    let u = new URL(url);
-    return "https://www.google.com/s2/favicons?sz=32&domain_url=" + u.origin;
-  } catch (e) { return ""; }
+function faviconFor(url){
+  try{
+    if(url.startsWith('vav://')) return "";
+    let u=new URL(url);
+    return "https://www.google.com/s2/favicons?sz=32&domain_url="+u.origin;
+  }catch(e){return "";}
 }
 
-// Extension Core Management Operations
+// ==========================================
+// NEW: CORE EXTENSION ENGINE IMPLEMENTATION
+// ==========================================
 function installExtension(id, name, scriptContent) {
   let exts = JSON.parse(localStorage.getItem(STORAGE.EXT) || '[]');
   if (!exts.find(x => x.id === id)) {
     exts.push({ id, name, script: scriptContent });
     localStorage.setItem(STORAGE.EXT, JSON.stringify(exts));
-    extensions = exts; // Sync matching local memory state array
+    extensions = exts; // Update runtime reference array immediately
     alert(`🎉 ${name} has been successfully installed!`);
-    renderWeb(); // Re-render pages to trigger context shifts
+    renderWeb(); // Refresh frame visibility to immediately deploy new logic
   } else {
     alert(`${name} is already installed.`);
   }
@@ -44,7 +47,7 @@ function injectExtensions(iframe) {
     if (!doc) return;
 
     extensions.forEach(ext => {
-      // Avoid duplicate dynamic script tag wrappers inside frames
+      // Avoid creating redundant dynamic script nodes on reloads
       if (doc.getElementById(`ext-${ext.id}`)) return;
 
       const scriptTag = doc.createElement('script');
@@ -53,13 +56,13 @@ function injectExtensions(iframe) {
         try {
           ${ext.script}
         } catch(e) {
-          console.error("Extension Error [${ext.name}]:", e);
+          console.error("Extension Execution Failure [${ext.name}]:", e);
         }
       `;
       doc.body.appendChild(scriptTag);
     });
   } catch (e) {
-    // Fails clean if cross-origin protections limit script insertion arrays
+    // Graceful exit fallback if cross-origin security context overrides programmatic frame tampering
     console.warn("Extension injection restricted on external targets due to security policy rules.");
   }
 }
@@ -130,22 +133,21 @@ function getVavPage(url) {
     return `<html><head>${sharedStyle}</head><body>
       <div class="box">
         <h1>Vav Web Mall</h1>
-        <p>Discover functional extensions for your custom interface designs</p>
+        <p>Discover extensions, standalone web apps, and custom interface designs</p>
         
-        <div class="card">
-          <div><strong>🛡️ AdBlock Lite</strong><br><small style="color:#9ca3af">Removes common ad banners and wrapper elements from pages.</small></div>
-          <button class="nav-btn" style="padding: 6px 14px; font-size: 12px;" 
-            onclick="window.parent.installExtension('adblock', 'AdBlock Lite', 'console.log(\\'AdBlock Active\\'); document.querySelectorAll(\\'#ad, .ads, footer\\').forEach(el => el.remove());')">
-            Get
-          </button>
+        <div class="card" onclick="window.parent.installExtension('adblock', 'AdBlock Pro Max', 'console.log(\\'AdBlock Injection Online\\'); document.querySelectorAll(\\'#ad, .ads, footer\\').forEach(el => el.remove());')">
+          <div><strong>🛡️ AdBlock Pro Max</strong><br><small style="color:#9ca3af">Blocks heavy tracking nodes and scripts.</small></div>
+          <button class="nav-btn" style="padding: 6px 14px; font-size: 12px;">Get</button>
         </div>
         
-        <div class="card">
-          <div><strong>🎨 Neon Page Customizer</strong><br><small style="color:#9ca3af">Forces page text elements to turn cyan for high-contrast viewing.</small></div>
-          <button class="nav-btn" style="padding: 6px 14px; font-size: 12px;" 
-            onclick="window.parent.installExtension('neon', 'Neon Customizer', 'const s=document.createElement(\\'style\\'); s.innerHTML=\\'* { color: #00bcd4 !important; }\\'; document.head.appendChild(s);')">
-            Get
-          </button>
+        <div class="card" onclick="window.parent.installExtension('cyberpunk', 'Dark Cyberpunk Theme', 'const s=document.createElement(\\'style\\'); s.innerHTML=\\'body, html, main { border-color: #ff007f !important; } h1, p, span, a { color: #00ffff !important; }\\'; document.head.appendChild(s);')">
+          <div><strong>🎨 Dark Cyberpunk Theme</strong><br><small style="color:#9ca3af">Turns layout properties neon blue and sharp pink.</small></div>
+          <button class="nav-btn" style="padding: 6px 14px; font-size: 12px;">Get</button>
+        </div>
+        
+        <div class="card" onclick="window.parent.installExtension('readermode', 'Reader Mode AI', 'console.log(\\'Reader Module Initialized\\');')">
+          <div><strong>🤖 Reader Mode AI</strong><br><small style="color:#9ca3af">Extract clean readable content blocks automatically.</small></div>
+          <button class="nav-btn" style="padding: 6px 14px; font-size: 12px;">Get</button>
         </div>
       </div>
     </body></html>`;
@@ -162,7 +164,7 @@ function getVavPage(url) {
       <div class="box">
         <h1>Vav Experimental Flags</h1>
         <p style="color: #ffb74d;">⚠️ WARNING: These settings are strictly experimental. Toggling options might compromise UI rendering stability.</p>
-        
+         
         <div class="flag-item">
           <div>
             <strong>#smooth-kinetic-scrolling</strong>
@@ -205,163 +207,129 @@ function getVavPage(url) {
   return `<html><head>${sharedStyle}</head><body><h1>404</h1><p>Internal address <code>vav://${target}</code> not found.</p></body></html>`;
 }
 
-function createTab(url='', activate=true) {
+function createTab(url='',activate=true){
   if(!url) url = 'vav://home';
-  const id = 't' + (nextTabId++);
-  const tab = { id, url, history: url ? [url] : [], i: url ? 0 : -1, title: 'New Tab', iframe: null, favicon: '' };
+  const id='t'+(nextTabId++);
+  const tab={id,url,history:url?[url]:[],i:url?0:-1,title:'New Tab',iframe:null,favicon:''};
   tabs.push(tab);
   if(activate) activateTab(id);
   renderTabs();
 }
 
-function renderTabs() {
-  $('tabs').innerHTML = '';
-  tabs.forEach(t => {
-    const el = document.createElement('div');
-    el.className = 'tab' + (t.id === activeTabId ? ' active' : '');
-    el.innerHTML = `<div class="favicon">${t.favicon ? `<img src="${t.favicon}">` : ''}</div>
-                    <div class="title">${t.title}</div>
-                    <div class="close">✕</div>`;
-    el.onclick = () => activateTab(t.id);
-    el.querySelector('.close').onclick = (e) => { e.stopPropagation(); closeTab(t.id) };
+function renderTabs(){
+  $('tabs').innerHTML='';
+  tabs.forEach(t=>{
+    const el=document.createElement('div');
+    el.className='tab'+(t.id===activeTabId?' active':'');
+    el.innerHTML=`<div class="favicon">${t.favicon?`<img src="${t.favicon}">`:''}</div>
+                  <div class="title">${t.title}</div>
+                  <div class="close">✕</div>`;
+    el.onclick=()=>activateTab(t.id);
+    el.querySelector('.close').onclick=(e)=>{e.stopPropagation();closeTab(t.id)};
     $('tabs').appendChild(el);
   });
-  const btn = document.createElement('button');
-  btn.className = 'add-tab';
-  btn.textContent = '+';
-  btn.onclick = () => createTab('', true);
+  const btn=document.createElement('button');btn.className='add-tab';btn.textContent='+';btn.onclick=()=>createTab('',true);
   $('tabs').appendChild(btn);
 }
 
-function activateTab(id) {
-  activeTabId = id; renderTabs(); renderWeb();
-  const t = getTab(id); if (t) { addr.value = t.url || ''; addrFav.src = t.favicon || ''; }
+function activateTab(id){
+  activeTabId=id;renderTabs();renderWeb();
+  const t=getTab(id); if(t) { addr.value=t.url||'';addrFav.src=t.favicon||''; }
 }
 
-function getTab(id) { return tabs.find(t => t.id === id); }
+function getTab(id){return tabs.find(t=>t.id===id);}
 
-function closeTab(id) {
-  const i = tabs.findIndex(x => x.id === id);
+function closeTab(id){
+  const i=tabs.findIndex(x=>x.id===id);
   if(i < 0) return;
   if(tabs[i].iframe) tabs[i].iframe.remove();
-  tabs.splice(i, 1);
-  activeTabId = tabs.length ? tabs[Math.max(0, i - 1)].id : null;
-  renderTabs(); renderWeb();
+  tabs.splice(i,1);
+  activeTabId=tabs.length ? tabs[Math.max(0,i-1)].id : null;
+  renderTabs();renderWeb();
 }
 
-function renderWeb() {
-  tabs.forEach(t => {
-    if(!t.iframe) {
-      const ifr = document.createElement('iframe');
-      ifr.className = 'webview';
-      ifr.dataset.tab = t.id;
-      webArea.appendChild(ifr);
-      t.iframe = ifr;
-      
-      ifr.addEventListener('load', () => {
+function renderWeb(){
+  tabs.forEach(t=>{
+    if(!t.iframe){
+      const ifr=document.createElement('iframe');ifr.className='webview';ifr.dataset.tab=t.id;webArea.appendChild(ifr);t.iframe=ifr;
+      ifr.addEventListener('load',()=>{
         if(t.url.startsWith('vav://')) {
           let name = t.url.replace('vav://','');
           t.title = name ? name.charAt(0).toUpperCase() + name.slice(1) : 'Home';
           t.favicon = '';
         } else {
-          t.title = t.url || 'New Tab';
-          t.favicon = faviconFor(t.url);
+          t.title=t.url||'New Tab';t.favicon=faviconFor(t.url);
         }
-        
-        // Injects installed functional web extensions into page context on load
+
+        // Programmatically insert running extensions to target document contexts
         injectExtensions(ifr);
-        
-        renderTabs();
-        if(t.id === activeTabId) addrFav.src = t.favicon;
-        loading.style.width = '0%'; status.textContent = 'Loaded';
+
+        renderTabs();if(t.id===activeTabId)addrFav.src=t.favicon;
+        loading.style.width='0%';status.textContent='Loaded';
       });
     }
-    t.iframe.style.display = t.id === activeTabId ? 'block' : 'none';
+    t.iframe.style.display=t.id===activeTabId?'block':'none';
     
-    if(t.id === activeTabId && t.url) {
+    if(t.id===activeTabId && t.url){
       if(t.url.startsWith('vav://')) {
         if(t.iframe.dataset.loadedUrl !== t.url) {
           t.iframe.dataset.loadedUrl = t.url;
           t.iframe.removeAttribute('src');
-          loading.style.width = '70%'; status.textContent = 'Loading internal page...';
+          loading.style.width='70%';status.textContent='Loading internal page...';
           t.iframe.srcdoc = getVavPage(t.url);
         }
       } else {
-        if(t.iframe.src !== t.url) {
+        if(t.iframe.src!==t.url){
           t.iframe.dataset.loadedUrl = '';
           t.iframe.removeAttribute('srcdoc');
-          loading.style.width = '70%'; status.textContent = 'Loading...';
-          t.iframe.src = t.url;
+          loading.style.width='70%';status.textContent='Loading...';
+          t.iframe.src=t.url;
         }
       }
     }
   });
 }
 
-function nav(raw) {
-  const t = getTab(activeTabId); if(!t) return;
-  let u = raw.trim(); if(!u) return;
+function nav(raw){
+  const t=getTab(activeTabId);if(!t)return;
+  let u=raw.trim();if(!u)return;
   
-  if(/^vav:\/\//i.test(u)) {
-    // Pass internal shell protocols straight through
-  } else if(/\s/.test(u) || !u.includes('.')) {
-    u = searchSel.value + encodeURIComponent(u);
+  if(/^vav:\/\//i.test(u)){
+    // Pass custom internal protocols straight through
+  } else if(/\s/.test(u)||!u.includes('.')) {
+    u=searchSel.value+encodeURIComponent(u);
   } else if(!/^https?:\/\//.test(u)) {
-    u = 'https://' + u;
+    u='https://'+u;
   }
   
-  t.history = t.history.slice(0, t.i + 1); t.history.push(u); t.i++;
-  t.url = u; addr.value = u; t.favicon = faviconFor(u); addrFav.src = t.favicon;
-  loading.style.width = '40%'; status.textContent = 'Loading...';
-  renderWeb(); pushHist(u);
+  t.history=t.history.slice(0,t.i+1);t.history.push(u);t.i++;
+  t.url=u;addr.value=u;t.favicon=faviconFor(u);addrFav.src=t.favicon;
+  loading.style.width='40%';status.textContent='Loading...';
+  renderWeb();pushHist(u);
 }
 
-function pushHist(u) {
-  const h = JSON.parse(localStorage.getItem(STORAGE.HIST) || '[]');
-  h.unshift({ u, ts: Date.now() });
-  localStorage.setItem(STORAGE.HIST, JSON.stringify(h.slice(0, 100)));
-  renderPanels();
-}
+function pushHist(u){const h=JSON.parse(localStorage.getItem(STORAGE.HIST)||'[]');h.unshift({u,ts:Date.now()});localStorage.setItem(STORAGE.HIST,JSON.stringify(h.slice(0,100)));renderPanels();}
+function addBmk(u){const b=JSON.parse(localStorage.getItem(STORAGE.BOOK)||'[]');if(!b.find(x=>x.u===u)){b.unshift({u,ts:Date.now()});localStorage.setItem(STORAGE.BOOK,JSON.stringify(b));renderPanels();}}
 
-// Data interaction maps
-function addBmk(u) {
-  const b = JSON.parse(localStorage.getItem(STORAGE.BOOK) || '[]');
-  if(!b.find(x => x.u === u)) {
-    b.unshift({ u, ts: Date.now() });
-    localStorage.setItem(STORAGE.BOOK, JSON.stringify(b));
-    renderPanels();
-  }
-}
-
-function renderPanels() {
-  bookmarksEl.innerHTML = '';
-  JSON.parse(localStorage.getItem(STORAGE.BOOK) || '[]').forEach(x => {
-    const d = document.createElement('div'); d.className = 'card';
-    d.innerHTML = `<div>${x.u}</div><small>★</small>`;
-    d.onclick = () => nav(x.u); bookmarksEl.appendChild(d);
+function renderPanels(){
+  bookmarksEl.innerHTML='';JSON.parse(localStorage.getItem(STORAGE.BOOK)||'[]').forEach(x=>{
+    const d=document.createElement('div');d.className='card';d.innerHTML=`<div>${x.u}</div><small>★</small>`;d.onclick=()=>nav(x.u);bookmarksEl.appendChild(d);
   });
-  historyEl.innerHTML = '';
-  JSON.parse(localStorage.getItem(STORAGE.HIST) || '[]').forEach(x => {
-    const d = document.createElement('div'); d.className = 'card';
-    d.innerHTML = `<div>${x.u}</div><small>${new Date(x.ts).toLocaleTimeString()}</small>`;
-    d.onclick = () => nav(x.u); historyEl.appendChild(d);
+  historyEl.innerHTML='';JSON.parse(localStorage.getItem(STORAGE.HIST)||'[]').forEach(x=>{
+    const d=document.createElement('div');d.className='card';d.innerHTML=`<div>${x.u}</div><small>${new Date(x.ts).toLocaleTimeString()}</small>`;d.onclick=()=>nav(x.u);historyEl.appendChild(d);
   });
 }
 
-$('goBtn').onclick = () => nav(addr.value);
-addr.onkeydown = e => { if (e.key === 'Enter') nav(addr.value); }
-$('reload').onclick = () => {
-  const t = getTab(activeTabId);
-  if(t) { if(t.url.startsWith('vav://')) { t.iframe.srcdoc = getVavPage(t.url); } else { t.iframe.src = t.url; } }
-}
-$('home').onclick = () => nav('vav://home');
-$('bookmarkBtn').onclick = () => { const t = getTab(activeTabId); if (t && t.url) addBmk(t.url); }
-$('toggleBookmarks').onclick = () => { $('sidePanels').style.display = $('sidePanels').style.display === 'none' ? 'block' : 'none'; }
-$('back').onclick = () => { const t = getTab(activeTabId); if (t && t.i > 0) { t.i--; t.url = t.history[t.i]; addr.value = t.url; t.favicon = faviconFor(t.url); addrFav.src = t.favicon; renderWeb(); } }
-$('forward').onclick = () => { const t = getTab(activeTabId); if (t && t.i < t.history.length - 1) { t.i++; t.url = t.history[t.i]; addr.value = t.url; t.favicon = faviconFor(t.url); addrFav.src = t.favicon; renderWeb(); } }
+$('goBtn').onclick=()=>nav(addr.value);addr.onkeydown=e=>{if(e.key==='Enter')nav(addr.value);}
+$('reload').onclick=()=>{const t=getTab(activeTabId);if(t) { if(t.url.startsWith('vav://')) { t.iframe.srcdoc = getVavPage(t.url); } else { t.iframe.src=t.url; } } }
+$('home').onclick=()=>nav('vav://home');
+$('bookmarkBtn').onclick=()=>{const t=getTab(activeTabId);if(t&&t.url)addBmk(t.url);}
+$('toggleBookmarks').onclick=()=>{$('sidePanels').style.display=$('sidePanels').style.display==='none'?'block':'none';}
+$('back').onclick=()=>{const t=getTab(activeTabId);if(t&&t.i>0){t.i--;t.url=t.history[t.i];addr.value=t.url;t.favicon=faviconFor(t.url);addrFav.src=t.favicon;renderWeb();}}
+$('forward').onclick=()=>{const t=getTab(activeTabId);if(t&&t.i<t.history.length-1){t.i++;t.url=t.history[t.i];addr.value=t.url;t.favicon=faviconFor(t.url);addrFav.src=t.favicon;renderWeb();}}
 
-createTab('', true); renderPanels();
+createTab('',true);renderPanels();
 
-// Map parent execution runtimes to runtime context window targets
+// Map parent functions down into the execution windows of child layout views
 window.nav = nav;
 window.installExtension = installExtension;
