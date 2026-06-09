@@ -35,7 +35,7 @@ function getVavPage(url) {
   if (target === 'home') {
     return `<html><head>${sharedStyle}</head><body>
       <div style="margin-top: 10vh;">
-        <h1>MiniChrome+</h1>
+        <h1>VAV browser v150.0(beta)</h1>
         <p>Explore the web inside your custom HTML browser shell</p>
         <div style="max-width: 500px; margin: 0 auto;">
           <input type="text" class="search-box" placeholder="Search or enter URL..." onkeydown="if(event.key==='Enter') window.parent.nav(this.value)">
