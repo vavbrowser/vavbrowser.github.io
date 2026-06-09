@@ -369,3 +369,57 @@ window.nav = nav;
     micBtn.style.display = 'none';
   }
 })();
+// --- ALL-IN-ONE JS AI MODE BUTTON ---
+(function() {
+  const addressInput = document.getElementById('address');
+  const goBtn = document.getElementById('goBtn');
+  
+  // Safety check: make sure the toolbar elements exist first
+  if (!goBtn || !addressInput) return;
+
+  // 1. Create the AI Mode button element
+  const aiBtn = document.createElement('div');
+  aiBtn.id = 'aiModeBtn';
+  aiBtn.innerText = 'AI Mode';
+  aiBtn.title = 'Go to Google AI';
+
+  // 2. Style it to look sleek and match your browser's cyan accent theme
+  aiBtn.style.background = 'linear-gradient(135deg, #00bcd4, #00838f)';
+  aiBtn.style.color = '#fff';
+  aiBtn.style.fontSize = '12px';
+  aiBtn.style.fontWeight = '600';
+  aiBtn.style.padding = '0 14px';
+  aiBtn.style.height = '34px';
+  aiBtn.style.borderRadius = '20px'; // Pill shaped
+  aiBtn.style.display = 'inline-flex';
+  aiBtn.style.alignItems = 'center';
+  aiBtn.style.justifyContent = 'center';
+  aiBtn.style.cursor = 'pointer';
+  aiBtn.style.transition = 'transform 0.18s, box-shadow 0.18s';
+  aiBtn.style.userSelect = 'none';
+  aiBtn.style.marginRight = '4px';
+  aiBtn.style.boxShadow = '0 2px 8px rgba(0, 188, 212, 0.2)';
+
+  // Interactive Hover Effects
+  aiBtn.addEventListener('mouseenter', () => {
+    aiBtn.style.transform = 'scale(1.05)';
+    aiBtn.style.boxShadow = '0 4px 12px rgba(0, 188, 212, 0.4)';
+  });
+  aiBtn.addEventListener('mouseleave', () => {
+    aiBtn.style.transform = 'scale(1)';
+    aiBtn.style.boxShadow = '0 2px 8px rgba(0, 188, 212, 0.2)';
+  });
+
+  // 3. Define action when clicked (Fills the address bar and auto-submits)
+  aiBtn.addEventListener('click', () => {
+    addressInput.value = 'https://google.com/ai';
+    
+    // Automatically triggers your script's built-in navigation logic
+    if (goBtn) {
+      goBtn.click();
+    }
+  });
+
+  // 4. Position it directly to the left of your "Go" (▶) button
+  goBtn.parentNode.insertBefore(aiBtn, goBtn);
+})();
