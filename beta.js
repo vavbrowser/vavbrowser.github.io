@@ -14,7 +14,7 @@ function faviconFor(url){
 
 // Generates internal browser page structures
 function getVavPage(url) {
-  const target = url.toLowerCase().replace('vav://', '').trim() || 'home';
+  const target = url.toLowerCase().replace('vav://', '').trim() || 'new-tab';
   const sharedStyle = `
     <style>
       body { background: #0e1116; color: #fff; font-family: 'Segoe UI', system-ui, sans-serif; padding: 40px; text-align: center; margin: 0; }
@@ -32,7 +32,7 @@ function getVavPage(url) {
     </style>
   `;
 
-  if (target === 'home') {
+  if (target === 'new-tab') {
     return `<html><head>${sharedStyle}</head><body>
       <div style="margin-top: 10vh;">
         <h1>VAV browser</h1>
@@ -150,7 +150,7 @@ function getVavPage(url) {
 }
 
 function createTab(url='',activate=true){
-  if(!url) url = 'vav://home';
+  if(!url) url = 'vav://new-tab';
   const id='t'+(nextTabId++);
   const tab={id,url,history:url?[url]:[],i:url?0:-1,title:'New Tab',iframe:null,favicon:''};
   tabs.push(tab);
@@ -197,7 +197,7 @@ function renderWeb(){
       ifr.addEventListener('load',()=>{
         if(t.url.startsWith('vav://')) {
           let name = t.url.replace('vav://','');
-          t.title = name ? name.charAt(0).toUpperCase() + name.slice(1) : 'Home';
+          t.title = name ? name.charAt(0).toUpperCase() + name.slice(1) : 'new-tab';
           t.favicon = '';
         } else {
           t.title=t.url||'New Tab';t.favicon=faviconFor(t.url);
@@ -260,7 +260,7 @@ function renderPanels(){
 
 $('goBtn').onclick=()=>nav(addr.value);addr.onkeydown=e=>{if(e.key==='Enter')nav(addr.value);}
 $('reload').onclick=()=>{const t=getTab(activeTabId);if(t) { if(t.url.startsWith('vav://')) { t.iframe.srcdoc = getVavPage(t.url); } else { t.iframe.src=t.url; } } }
-$('home').onclick=()=>nav('vav://home');
+$('new-tab').onclick=()=>nav('vav://new-tab');
 $('bookmarkBtn').onclick=()=>{const t=getTab(activeTabId);if(t&&t.url)addBmk(t.url);}
 $('toggleBookmarks').onclick=()=>{$('sidePanels').style.display=$('sidePanels').style.display==='none'?'block':'none';}
 $('back').onclick=()=>{const t=getTab(activeTabId);if(t&&t.i>0){t.i--;t.url=t.history[t.i];addr.value=t.url;t.favicon=faviconFor(t.url);addrFav.src=t.favicon;renderWeb();}}
