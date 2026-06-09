@@ -4,6 +4,85 @@ const STORAGE={BOOK:'mc_bmk',HIST:'mc_hist'};
 const searchSel=$('searchEngine'), addr=$('address'), status=$('status'), webArea=$('webviewArea'), loading=$('loadingBar');
 const bookmarksEl=$('bookmarksList'), historyEl=$('historyList'), addrFav=$('addrFavicon');
 
+// 1. Inject the CSS layout changes for vertical tabs
+const style = document.createElement('style');
+style.textContent = `
+  /* Restructure body to a horizontal row layout for sidebar + content */
+  body {
+    flex-direction: row !important;
+    overflow: hidden;
+  }
+
+  /* Transform the tabs container into a left-hand sidebar */
+  .tabs {
+    flex-direction: column !important;
+    width: 240px;
+    height: 100vh !important;
+    padding: 12px 8px !important;
+    box-sizing: border-box;
+    align-items: stretch !important;
+    border-right: 1px solid rgba(255,255,255,0.05);
+    overflow-y: auto;
+    justify-content: flex-start !important;
+  }
+
+  /* Style individual tabs to stack cleanly */
+  .tab {
+    width: auto !important;
+    max-width: none !important;
+    min-width: 0 !important;
+    margin-right: 0 !important;
+    margin-bottom: 6px;
+    border-radius: var(--radius) !important;
+    padding: 8px 12px !important;
+    background: transparent;
+  }
+  .tab.active {
+    background: var(--active-tab) !important;
+  }
+  .tab:hover:not(.active) {
+    background: rgba(255,255,255,0.05);
+  }
+
+  /* Push the "+" button to the top or bottom neatly */
+  .add-tab {
+    margin-top: 8px;
+    align-self: center;
+    border-radius: var(--radius) !important;
+  }
+
+  /* Wrap the toolbar and webview area together on the right side */
+  .right-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
+  }
+`;
+document.head.appendChild(style);
+
+// 2. Re-arrange the DOM nodes so the toolbar moves to the right side
+window.addEventListener('DOMContentLoaded', () => {
+  const tabs = document.getElementById('tabs');
+  const toolbar = document.querySelector('.toolbar');
+  const content = document.querySelector('.content');
+
+  // Create a container for everything that isn't the sidebar tabs
+  const rightContainer = document.createElement('div');
+  rightContainer.className = 'right-container';
+
+  // Move the toolbar and the content windows inside the right container
+  if (toolbar && content) {
+    // Insert the right container into the body
+    document.body.appendChild(rightContainer);
+    
+    // Migrate the elements
+    rightContainer.appendChild(toolbar);
+    rightContainer.appendChild(content);
+  }
+});
+
 function faviconFor(url){
   try{
     if(url.startsWith('vav://')) return "";
