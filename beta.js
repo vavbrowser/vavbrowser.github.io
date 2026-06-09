@@ -268,3 +268,88 @@ $('forward').onclick=()=>{const t=getTab(activeTabId);if(t&&t.i<t.history.length
 
 createTab('',true);renderPanels();
 window.nav = nav;
+// --- ALL-IN-ONE JS SPEECH TO TEXT LOGIC ---
+(function() {
+  const addressInput = document.getElementById('address');
+  const goBtn = document.getElementById('goBtn');
+  const statusEl = document.getElementById('status');
+
+  // Safety check: make sure the address bar exists before doing anything
+  if (!addressInput) return;
+
+  // 1. Dynamically create the microphone element
+  const micBtn = document.createElement('div');
+  micBtn.id = 'micBtn';
+  micBtn.innerText = '🎙️';
+  micBtn.title = 'Search with your voice';
+  
+  // 2. Inject styles directly through JS so you don't need CSS edits
+  micBtn.style.cursor = 'pointer';
+  micBtn.style.padding = '0 6px';
+  micBtn.style.opacity = '0.6';
+  micBtn.style.transition = 'opacity 0.18s, transform 0.18s';
+  micBtn.style.userSelect = 'none';
+
+  // Add hover animations via JS listener
+  micBtn.addEventListener('mouseenter', () => { micBtn.style.opacity = '1'; micBtn.style.transform = 'scale(1.1)'; });
+  micBtn.addEventListener('mouseleave', () => { micBtn.style.opacity = '0.6'; micBtn.style.transform = 'scale(1)'; });
+
+  // 3. Insert the microphone element right after the address input box
+  addressInput.parentNode.insertBefore(micBtn, addressInput.nextSibling);
+
+  // 4. Web Speech API Logic
+  if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const recognition = new SpeechRecognition();
+
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.lang = 'en-US';
+
+    let isListening = false;
+
+    micBtn.addEventListener('click', () => {
+      if (isListening) {
+        recognition.stop();
+      } else {
+        recognition.start();
+      }
+    });
+
+    recognition.onstart = () => {
+      isListening = true;
+      micBtn.innerText = '🛑';
+      micBtn.style.opacity = '1';
+      addressInput.value = '';
+      addressInput.placeholder = 'Listening...';
+      if (statusEl) statusEl.textContent = "Listening to voice input...";
+    };
+
+    recognition.onend = () => {
+      isListening = false;
+      micBtn.innerText = '🎙️';
+      micBtn.style.opacity = '0.6';
+      addressInput.placeholder = 'Search or type URL';
+    };
+
+    recognition.onresult = (event) => {
+      const voiceResult = event.results[0][0].transcript;
+      addressInput.value = voiceResult;
+      if (statusEl) statusEl.textContent = "Searching for: " + voiceResult;
+      
+      // Auto-trigger search after a brief glance at the text
+      setTimeout(() => {
+        if (goBtn) goBtn.click();
+      }, 500);
+    };
+
+    recognition.onerror = (event) => {
+      console.error("Speech Recognition Error: ", event.error);
+      if (statusEl) statusEl.textContent = "Voice Search Error: " + event.error;
+    };
+
+  } else {
+    // Hide mic element if browser platform doesn't support speech tracking
+    micBtn.style.display = 'none';
+  }
+})();
