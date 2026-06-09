@@ -268,9 +268,7 @@ $('forward').onclick=()=>{const t=getTab(activeTabId);if(t&&t.i<t.history.length
 
 createTab('',true);renderPanels();
 window.nav = nav;
-// --- ALL-IN-ONE JS SPEECH TO TEXT LOGIC ---
-// --- ALL-IN-ONE JS SPEECH TO TEXT (MATERIAL SYMBOLS EDITION) ---
-// --- COMBINED JS: VOICE SEARCH & AI MODE AT THE OMNIBOX EDGE ---
+
 (function() {
   const addressInput = document.getElementById('address');
   const goBtn = document.getElementById('goBtn');
@@ -396,5 +394,4 @@ window.nav = nav;
   } else {
     micBtn.style.display = 'none';
   }
-})();
 })();
