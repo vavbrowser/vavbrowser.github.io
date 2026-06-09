@@ -1,7 +1,7 @@
 const $ = id => document.getElementById(id);
 let tabs = [], activeTabId = null, nextTabId = 1;
 
-// Updated storage keys to include user extensions
+// Storage keys, including functional extensions data
 const STORAGE = { BOOK: 'mc_bmk', HIST: 'mc_hist', EXT: 'mc_ext' };
 
 const searchSel = $('searchEngine'), 
@@ -16,81 +16,6 @@ const searchSel = $('searchEngine'),
 // Sync actively loaded extensions out of localStorage on startup
 let extensions = JSON.parse(localStorage.getItem(STORAGE.EXT) || '[]');
 
-// 1. Inject the CSS layout changes for vertical tabs
-const style = document.createElement('style');
-style.textContent = `
-  /* Restructure body to a horizontal row layout for sidebar + content */
-  body {
-    flex-direction: row !important;
-    overflow: hidden;
-  }
-
-  /* Transform the tabs container into a left-hand sidebar */
-  .tabs {
-    flex-direction: column !important;
-    width: 240px;
-    height: 100vh !important;
-    padding: 12px 8px !important;
-    box-sizing: border-box;
-    align-items: stretch !important;
-    border-right: 1px solid rgba(255,255,255,0.05);
-    overflow-y: auto;
-    justify-content: flex-start !important;
-  }
-
-  /* Style individual tabs to stack cleanly */
-  .tab {
-    width: auto !important;
-    max-width: none !important;
-    min-width: 0 !important;
-    margin-right: 0 !important;
-    margin-bottom: 6px;
-    border-radius: var(--radius) !important;
-    padding: 8px 12px !important;
-    background: transparent;
-  }
-  .tab.active {
-    background: var(--active-tab) !important;
-  }
-  .tab:hover:not(.active) {
-    background: rgba(255,255,255,0.05);
-  }
-
-  /* Push the "+" button to the top or bottom neatly */
-  .add-tab {
-    margin-top: 8px;
-    align-self: center;
-    border-radius: var(--radius) !important;
-  }
-
-  /* Wrap the toolbar and webview area together on the right side */
-  .right-container {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    height: 100vh;
-    overflow: hidden;
-  }
-`;
-document.head.appendChild(style);
-
-// 2. Re-arrange the DOM nodes so the toolbar moves to the right side
-window.addEventListener('DOMContentLoaded', () => {
-  const toolbar = document.querySelector('.toolbar');
-  const content = document.querySelector('.content');
-
-  // Create a container for everything that isn't the sidebar tabs
-  const rightContainer = document.createElement('div');
-  rightContainer.className = 'right-container';
-
-  // Move the toolbar and the content windows inside the right container
-  if (toolbar && content) {
-    document.body.appendChild(rightContainer);
-    rightContainer.appendChild(toolbar);
-    rightContainer.appendChild(content);
-  }
-});
-
 function faviconFor(url) {
   try {
     if (url.startsWith('vav://')) return "";
@@ -99,7 +24,7 @@ function faviconFor(url) {
   } catch (e) { return ""; }
 }
 
-// 3. Extension Core Management Operations
+// Extension Core Management Operations
 function installExtension(id, name, scriptContent) {
   let exts = JSON.parse(localStorage.getItem(STORAGE.EXT) || '[]');
   if (!exts.find(x => x.id === id)) {
@@ -343,7 +268,7 @@ function renderWeb() {
           t.favicon = faviconFor(t.url);
         }
         
-        // ✨ Injects installed functional web extensions into page context on load
+        // Injects installed functional web extensions into page context on load
         injectExtensions(ifr);
         
         renderTabs();
@@ -398,6 +323,7 @@ function pushHist(u) {
   renderPanels();
 }
 
+// Data interaction maps
 function addBmk(u) {
   const b = JSON.parse(localStorage.getItem(STORAGE.BOOK) || '[]');
   if(!b.find(x => x.u === u)) {
