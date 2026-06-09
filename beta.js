@@ -1,362 +1,270 @@
-const $ = id => document.getElementById(id);
+const $=id=>document.getElementById(id);
+let tabs=[],activeTabId=null,nextTabId=1;
+const STORAGE={BOOK:'mc_bmk',HIST:'mc_hist'};
+const searchSel=$('searchEngine'), addr=$('address'), status=$('status'), webArea=$('webviewArea'), loading=$('loadingBar');
+const bookmarksEl=$('bookmarksList'), historyEl=$('historyList'), addrFav=$('addrFavicon');
 
-// OS Persistent Storage Sectors
-const STORAGE = { DISK: 'vav_os_disk', EXT: 'mc_ext' };
-
-// --- 1. CORE SANITIZATION: WIPE BROWSER UI CHROME ---
-// Dynamically purge tab strips, address inputs, and layout frames from the master document
-const domClean targets = ['tabs', 'searchEngine', 'address', 'goBtn', 'bookmarkBtn', 'toggleBookmarks', 'sidePanels'];
-targets.forEach(tId => {
-  const el = $(tId);
-  if (el) el.remove();
-});
-
-// Force the master container to full-viewport size and scrub its structure
-if ($('webviewArea')) {
-  $('webviewArea').style.width = '100vw';
-  $('webviewArea').style.height = '100vh';
-  $('webviewArea').style.padding = '0';
-  $('webviewArea').style.margin = '0';
-  $('webviewArea').style.background = '#000';
-  $('webviewArea').innerHTML = ''; // Detach old browser frame wrappers
+function faviconFor(url){
+  try{
+    if(url.startsWith('vav://')) return "";
+    let u=new URL(url);
+    return "https://www.google.com/s2/favicons?sz=32&domain_url="+u.origin;
+  }catch(e){return "";}
 }
 
-// Initialize Persistent Virtual File Allocation Table
-if (!localStorage.getItem(STORAGE.DISK)) {
-  const freshInstallationDisk = [
-    { name: 'desktop_readme.txt', content: 'Welcome to your standalone VavWindows WebOS environment!\n\nThe browser navigation tabs have been detached. All tools run inside this integrated multitasking layout.' },
-    { name: 'system_reg.json', content: '{ "build_rev": 1042, "ui_mode": "chromeless_os", "filesystem": "localstorage_v1" }' }
-  ];
-  localStorage.setItem(STORAGE.DISK, JSON.stringify(freshInstallationDisk));
-}
-
-let activeExtensions = JSON.parse(localStorage.getItem(STORAGE.EXT) || '[]');
-
-// =======================================================
-// SYSTEM CORE MAPPING: GENERATE TRUE SYSTEM DESKTOP
-// =======================================================
-function bootSystemOS() {
-  const webArea = $('webviewArea');
-  if (!webArea) return;
-
-  // Build the master OS operational environment frame
-  const osIframe = document.createElement('iframe');
-  osIframe.style.width = '100%';
-  osIframe.style.height = '100%';
-  osIframe.style.border = 'none';
-  webArea.appendChild(osIframe);
-
-  const windowsAesthetics = `
+// Generates internal browser page structures
+function getVavPage(url) {
+  const target = url.toLowerCase().replace('vav://', '').trim() || 'home';
+  const sharedStyle = `
     <style>
-      * { box-sizing: border-box; }
-      body { 
-        background: url('https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=1920') no-repeat center center fixed; 
-        background-size: cover;
-        color: #fff; 
-        font-family: 'Segoe UI', system-ui, sans-serif; 
-        margin: 0; padding: 0; 
-        height: 100vh; 
-        overflow: hidden; 
-        display: flex; 
-        flex-direction: column; 
-      }
-      
-      /* Desktop Workspace Grid */
-      .workspace { flex: 1; position: relative; padding: 20px; display: grid; grid-template-columns: repeat(auto-fill, 90px); grid-template-rows: repeat(auto-fill, 100px); grid-auto-flow: column; gap: 15px; align-content: flex-start; }
-      .desktop-icon { display: flex; flex-direction: column; align-items: center; text-align: center; cursor: pointer; padding: 8px; border-radius: 6px; border: 1px solid transparent; transition: all 0.1s; user-select: none; }
-      .desktop-icon:hover { background: rgba(255, 255, 255, 0.1); border-color: rgba(255, 255, 255, 0.15); backdrop-filter: blur(8px); }
-      .desktop-icon .glyph { font-size: 34px; margin-bottom: 6px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4)); }
-      .desktop-icon .title { font-size: 11px; text-shadow: 0 1px 3px rgba(0,0,0,0.9); color: #f9fafb; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; width: 100%; }
-      
-      /* Multitasking Functional Window Frame */
-      .os-window { position: absolute; min-width: 350px; min-height: 250px; background: rgba(24, 28, 36, 0.88); backdrop-filter: blur(25px); border: 1px solid rgba(255,255,255,0.14); border-radius: 8px; box-shadow: 0 20px 50px rgba(0,0,0,0.55); display: flex; flex-direction: column; overflow: hidden; z-index: 10; }
-      .window-bar { background: rgba(32, 38, 52, 0.4); padding: 10px 14px; display: flex; justify-content: space-between; align-items: center; cursor: move; user-select: none; border-bottom: 1px solid rgba(255,255,255,0.06); }
-      .window-caption { font-size: 12px; font-weight: 500; display: flex; align-items: center; gap: 8px; }
-      .window-actions { display: flex; gap: 4px; }
-      .action-btn { width: 28px; height: 24px; display: flex; align-items: center; justify-content: center; font-size: 11px; cursor: pointer; border: none; background: transparent; color: #fff; border-radius: 4px; transition: background 0.15s; margin-top: -6px; margin-right: -10px; }
-      .action-btn:hover { background: rgba(255,255,255,0.1); }
-      .close-btn:hover { background: #e81123 !important; }
-      .window-viewport { flex: 1; padding: 0; overflow: auto; background: #0b0d13; }
-      
-      /* Taskbar Architecture (Windows 11 Centered Array) */
-      .taskbar { height: 48px; background: rgba(20, 24, 33, 0.8); backdrop-filter: blur(20px); border-top: 1px solid rgba(255, 255, 255, 0.08); display: flex; align-items: center; padding: 0 16px; justify-content: space-between; z-index: 99999; }
-      .taskbar-center-tray { position: absolute; left: 50%; transform: translateX(-50%); display: flex; gap: 6px; align-items: center; }
-      .windows-start { background: transparent; border: none; font-size: 24px; cursor: pointer; border-radius: 4px; width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; transition: background 0.2s; }
-      .windows-start:hover { background: rgba(255,255,255,0.1); }
-      .active-apps-dock { display: flex; gap: 6px; }
-      .dock-tile { width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.05); border-radius: 4px; font-size: 20px; cursor: pointer; position: relative; transition: all 0.2s; }
-      .dock-tile:hover { background: rgba(255,255,255,0.14); }
-      .dock-tile.focused::after { content: ''; position: absolute; bottom: 3px; left: 20%; width: 60%; height: 3px; background: #00bcd4; border-radius: 2px; }
-      .tray-clock { font-size: 11px; text-align: right; color: #e5e7eb; user-select: none; }
-      
-      /* Windows Start Panel Layout Matrix */
-      .start-flyout { position: absolute; bottom: 58px; left: 50%; transform: translateX(-50%) translateY(120px); width: 480px; height: 520px; background: rgba(18, 22, 30, 0.92); backdrop-filter: blur(35px); border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; box-shadow: 0 25px 60px rgba(0,0,0,0.7); z-index: 100000; display: none; opacity: 0; transition: all 0.2s cubic-bezier(0.05, 0.7, 0.1, 1); padding: 24px; }
-      .start-flyout.active { display: block; opacity: 1; transform: translateX(-50%) translateY(0); }
-      .start-menu-apps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 20px; }
-      .app-tile { display: flex; flex-direction: column; align-items: center; text-align: center; cursor: pointer; padding: 12px; border-radius: 6px; transition: background 0.15s; }
-      .app-tile:hover { background: rgba(255,255,255,0.06); }
-      .app-tile .t-glyph { font-size: 28px; margin-bottom: 6px; }
-      .app-tile .t-name { font-size: 12px; color: #e5e7eb; }
+      body { background: #0e1116; color: #fff; font-family: 'Segoe UI', system-ui, sans-serif; padding: 40px; text-align: center; margin: 0; }
+      h1 { color: #00bcd4; font-weight: 400; margin-bottom: 8px; font-size: 2.5rem; }
+      p { color: #9ca3af; margin-bottom: 24px; }
+      .box { max-width: 650px; margin: 0 auto; text-align: left; background: #181c24; padding: 24px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.4); }
+      .card { background: #1f242e; padding: 14px; margin: 10px 0; border-radius: 8px; cursor: pointer; transition: background 0.2s, transform 0.1s; display: flex; justify-content: space-between; align-items: center; }
+      .card:hover { background: #2a313e; transform: translateY(-1px); }
+      .card a { color: #00bcd4; text-decoration: none; word-break: break-all; font-size: 14px; }
+      .search-box { width: 100%; padding: 12px 18px; border-radius: 25px; border: 1px solid #2a313e; background: #1f242e; color: #fff; box-sizing: border-box; font-size: 16px; margin-top: 20px; outline: none; transition: border-color 0.2s; }
+      .search-box:focus { border-color: #00bcd4; }
+      .btn-row { margin-top: 20px; display: flex; gap: 12px; justify-content: center; }
+      .nav-btn { background: #1f242e; color: #fff; border: 1px solid #2a313e; padding: 10px 20px; border-radius: 20px; cursor: pointer; transition: all 0.2s; font-size: 14px; }
+      .nav-btn:hover { background: #00bcd4; color: #0e1116; border-color: #00bcd4; }
     </style>
   `;
 
-  osIframe.srcdoc = `
-    <html>
-    <head>${windowsAesthetics}</head>
-    <body>
-      
-      <div class="workspace" id="workspace" onclick="dismissStartMenu(event)">
-        <div class="desktop-icon" onclick="launchOSApp('This PC', 'files', '💻')"><div class="glyph">💻</div><div class="title">This PC</div></div>
-        <div class="desktop-icon" onclick="launchOSApp('Edge Browser', 'browser', '🌐')"><div class="glyph">🌐</div><div class="title">Web Browser</div></div>
-        <div class="desktop-icon" onclick="launchOSApp('Task Manager', 'tasks', '📊')"><div class="glyph">📊</div><div class="title">Task Manager</div></div>
-        <div class="desktop-icon" onclick="launchOSApp('Vav Store', 'mall', '🏪')"><div class="glyph">🏪</div><div class="title">Vav Store</div></div>
-        <div class="desktop-icon" onclick="launchOSApp('Settings Panel', 'settings', '⚙️')"><div class="glyph">⚙️</div><div class="title">Settings</div></div>
-      </div>
-
-      <div class="start-flyout" id="startPanel">
-        <input type="text" placeholder="Search for apps, settings, and files..." style="width:100%; padding:10px 14px; background:rgba(0,0,0,0.25); border:1px solid rgba(255,255,255,0.1); border-radius:6px; color:#fff; font-size:12px; outline:none;">
-        <h5 style="margin: 20px 0 10px 0; font-weight:400; color:#9ca3af; font-size:11px; uppercase; letter-spacing:0.5px;">Pinned Applications</h5>
-        <div class="start-menu-apps">
-          <div class="app-tile" onclick="toggleStart(); launchOSApp('This PC', 'files', '💻')"><div class="t-glyph">💻</div><div class="t-name">File System</div></div>
-          <div class="app-tile" onclick="toggleStart(); launchOSApp('Edge Browser', 'browser', '🌐')"><div class="t-glyph">🌐</div><div class="t-name">Web Browser</div></div>
-          <div class="app-tile" onclick="toggleStart(); launchOSApp('Task Manager', 'tasks', '📊')"><div class="t-glyph">📊</div><div class="t-name">Diagnostics</div></div>
-          <div class="app-tile" onclick="toggleStart(); launchOSApp('Settings Panel', 'settings', '⚙️')"><div class="t-glyph">⚙️</div><div class="t-name">Settings</div></div>
+  if (target === 'home') {
+    return `<html><head>${sharedStyle}</head><body>
+      <div style="margin-top: 10vh;">
+        <h1>MiniChrome+</h1>
+        <p>Explore the web inside your custom HTML browser shell</p>
+        <div style="max-width: 500px; margin: 0 auto;">
+          <input type="text" class="search-box" placeholder="Search or enter URL..." onkeydown="if(event.key==='Enter') window.parent.nav(this.value)">
+          <div class="btn-row">
+            <button class="nav-btn" onclick="window.parent.nav('vav://bookmarks')">Bookmarks</button>
+            <button class="nav-btn" onclick="window.parent.nav('vav://history')">History</button>
+            <button class="nav-btn" onclick="window.parent.nav('vav://mall')">Mall</button>
+            <button class="nav-btn" onclick="window.parent.nav('vav://flags')">Flags</button>
+          </div>
         </div>
       </div>
+    </body></html>`;
+  }
 
-      <div class="taskbar">
-        <div></div> <div class="taskbar-center-tray">
-          <button class="windows-start" onclick="toggleStart()">🪟</button>
-          <div class="active-apps-dock" id="dockContainer"></div>
+  if (target === 'bookmarks') {
+    const data = JSON.parse(localStorage.getItem(STORAGE.BOOK) || '[]');
+    let items = data.map(x => `<div class="card" onclick="window.parent.nav('${x.u}')"><a>${x.u}</a><small style="color:#00bcd4">★</small></div>`).join('');
+    return `<html><head>${sharedStyle}</head><body>
+      <div class="box">
+        <h1>Bookmarks</h1>
+        <p>Your saved references</p>
+        ${items || '<p style="text-align:center; padding: 20px 0;">No bookmarks captured yet.</p>'}
+      </div>
+    </body></html>`;
+  }
+
+  if (target === 'history') {
+    const data = JSON.parse(localStorage.getItem(STORAGE.HIST) || '[]');
+    let items = data.map(x => `<div class="card" onclick="window.parent.nav('${x.u}')"><a>${x.u}</a><small style="color:#9ca3af">${new Date(x.ts).toLocaleTimeString()}</small></div>`).join('');
+    return `<html><head>${sharedStyle}</head><body>
+      <div class="box">
+        <h1>History</h1>
+        <p>Recently visited pages</p>
+        ${items || '<p style="text-align:center; padding: 20px 0;">Your browsing history is empty.</p>'}
+      </div>
+    </body></html>`;
+  }
+
+  if (target === 'mall') {
+    return `<html><head>${sharedStyle}</head><body>
+      <div class="box">
+        <h1>Vav Web Mall</h1>
+        <p>Discover extensions, standalone web apps, and custom interface designs</p>
+        <div class="card" onclick="alert('Mock Extension Added Successfully!')">
+          <div><strong>🛡️ AdBlock Pro Max</strong><br><small style="color:#9ca3af">Blocks heavy tracking nodes and scripts.</small></div>
+          <button class="nav-btn" style="padding: 6px 14px; font-size: 12px;">Get</button>
         </div>
-        <div class="tray-clock">
-          <div id="timeVal" style="font-weight: 500;">00:00 PM</div>
-          <div id="dateVal" style="color:#9ca3af; font-size:10px; margin-top:1px;">01/01/2026</div>
+        <div class="card" onclick="alert('Mock Theme Injected!')">
+          <div><strong>🎨 Dark Cyberpunk Theme</strong><br><small style="color:#9ca3af">Turns layout properties neon blue and sharp pink.</small></div>
+          <button class="nav-btn" style="padding: 6px 14px; font-size: 12px;">Get</button>
+        </div>
+        <div class="card" onclick="alert('Mock Plugin Activated!')">
+          <div><strong>🤖 Reader Mode AI</strong><br><small style="color:#9ca3af">Extract clean readable content blocks automatically.</small></div>
+          <button class="nav-btn" style="padding: 6px 14px; font-size: 12px;">Get</button>
         </div>
       </div>
+    </body></html>`;
+  }
 
-      <script>
-        let runningProcessCount = 0;
-        let runningAppsRegistry = {};
-
-        function toggleStart() {
-          document.getElementById('startPanel').classList.toggle('active');
-        }
+  if (target === 'flags') {
+    return `<html><head>${sharedStyle}
+      <style>
+        .flag-item { display: flex; justify-content: space-between; align-items: center; background: #1f242e; padding: 14px; margin: 10px 0; border-radius: 8px; }
+        .flag-desc { color: #9ca3af; font-size: 13px; margin-top: 4px; }
+        select { background: #2a313e; color: #fff; border: 1px solid #3f485c; padding: 6px 12px; border-radius: 6px; cursor: pointer; outline: none; }
+      </style>
+    </head><body>
+      <div class="box">
+        <h1>Vav Experimental Flags</h1>
+        <p style="color: #ffb74d;">⚠️ WARNING: These settings are strictly experimental. Toggling options might compromise UI rendering stability.</p>
         
-        function dismissStartMenu(e) {
-          if (e.target.id === 'workspace') {
-            document.getElementById('startPanel').classList.remove('active');
-          }
-        }
+        <div class="flag-item">
+          <div>
+            <strong>#smooth-kinetic-scrolling</strong>
+            <div class="flag-desc">Overrides baseline frame containers to use enhanced hardware-driven physics arrays.</div>
+          </div>
+          <select onchange="alert('Property saved. Restart shell to load updates.')">
+            <option>Default</option>
+            <option selected>Enabled</option>
+            <option>Disabled</option>
+          </select>
+        </div>
 
-        function launchOSApp(name, appId, structuralGlyph) {
-          runningProcessCount++;
-          const processId = 'p-' + runningProcessCount;
-          const workspace = document.getElementById('workspace');
-          
-          const targetWindow = document.createElement('div');
-          targetWindow.className = 'os-window';
-          targetWindow.id = processId;
-          targetWindow.style.top = (50 + (runningProcessCount * 25) % 180) + 'px';
-          targetWindow.style.left = (100 + (runningProcessCount * 30) % 250) + 'px';
-          targetWindow.style.width = '620px';
-          targetWindow.style.height = '400px';
-          
-          targetWindow.innerHTML = \`
-            <div class="window-bar" onmousedown="focusAndDragWindow(event, '\${processId}')">
-              <div class="window-caption">\${structuralGlyph} \${name}</div>
-              <div class="window-actions">
-                <button class="action-btn close-btn" onclick="terminateProcess('\${processId}')">✕</button>
-              </div>
-            </div>
-            <div class="window-viewport">
-              <iframe srcdoc="\${window.parent.getAppContentPayload(appId)}" style="width:100%; height:100%; border:none; background:transparent;"></iframe>
-            </div>
-          \`;
-          
-          workspace.appendChild(targetWindow);
-          runningAppsRegistry[processId] = { name, glyph: structuralGlyph };
-          
-          focusTargetLayer(processId);
-          rebuildTaskbarDock();
-        }
+        <div class="flag-item">
+          <div>
+            <strong>#strict-origin-isolation</strong>
+            <div class="flag-desc">Saves unique browser environments separately per processing context.</div>
+          </div>
+          <select onchange="alert('Property saved. Restart shell to load updates.')">
+            <option selected>Default</option>
+            <option>Enabled</option>
+            <option>Disabled</option>
+          </select>
+        </div>
 
-        function terminateProcess(pId) {
-          const winNode = document.getElementById(pId);
-          if (winNode) winNode.remove();
-          delete runningAppsRegistry[pId];
-          rebuildTaskbarDock();
-        }
+        <div class="flag-item">
+          <div>
+            <strong>#force-gpu-rasterization</strong>
+            <div class="flag-desc">Skips default CPU processing logic to force layer painting straight onto active GPU vectors.</div>
+          </div>
+          <select onchange="alert('Property saved. Restart shell to load updates.')">
+            <option>Default</option>
+            <option>Enabled</option>
+            <option selected>Disabled</option>
+          </select>
+        </div>
+      </div>
+    </body></html>`;
+  }
 
-        function focusTargetLayer(pId) {
-          document.querySelectorAll('.os-window').forEach(w => w.style.zIndex = 10);
-          const activeWin = document.getElementById(pId);
-          if (activeWin) activeWin.style.zIndex = 100;
-          
-          // Sync visually focused attributes down to running taskbar apps
-          document.querySelectorAll('.dock-tile').forEach(tile => {
-            tile.classList.toggle('focused', tile.dataset.process === pId);
-          });
-        }
-
-        function rebuildTaskbarDock() {
-          const dock = document.getElementById('dockContainer');
-          dock.innerHTML = '';
-          
-          Object.keys(runningAppsRegistry).forEach(pId => {
-            const meta = runningAppsRegistry[pId];
-            const tile = document.createElement('div');
-            tile.className = 'dock-tile';
-            tile.dataset.process = pId;
-            tile.textContent = meta.glyph;
-            tile.title = meta.name;
-            tile.onclick = () => focusTargetLayer(pId);
-            dock.appendChild(tile);
-          });
-        }
-
-        function focusAndDragWindow(e, pId) {
-          if (e.target.className.includes('action-btn')) return;
-          const win = document.getElementById(pId);
-          focusTargetLayer(pId);
-
-          let initialX = e.clientX, initialY = e.clientY;
-          
-          function onMouseMove(moveEvent) {
-            const dx = moveEvent.clientX - initialX;
-            const dy = moveEvent.clientY - initialY;
-            initialX = moveEvent.clientX;
-            initialY = moveEvent.clientY;
-            win.style.top = (win.offsetTop + dy) + "px";
-            win.style.left = (win.offsetLeft + dx) + "px";
-          }
-          
-          function onMouseUp() {
-            document.removeEventListener('mousemove', onMouseMove);
-            document.removeEventListener('mouseup', onMouseUp);
-          }
-          
-          document.addEventListener('mousemove', onMouseMove);
-          document.addEventListener('mouseup', onMouseUp);
-        }
-
-        // Live Clock Service Synchronizer Loop Thread
-        setInterval(() => {
-          const time = new Date();
-          document.getElementById('timeVal').textContent = time.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-          document.getElementById('dateVal').textContent = time.toLocaleDateString();
-        }, 1000);
-      </script>
-    </body>
-    </html>
-  `;
+  return `<html><head>${sharedStyle}</head><body><h1>404</h1><p>Internal address <code>vav://${target}</code> not found.</p></body></html>`;
 }
 
-// =======================================================
-// CORE OPERATING SYSTEM APP FILE SYSTEM & RUNTIMES
-// =======================================================
-function getAppContentPayload(appId) {
-  const commonFrameCSS = `
-    <style>
-      body { background: #0c0e14; color: #e5e7eb; font-family: 'Segoe UI', system-ui, sans-serif; padding: 16px; margin: 0; font-size: 13px; }
-      h3 { color: #fff; margin-top: 0; font-weight: 500; font-size: 15px; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 8px; }
-      .sys-card { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07); padding: 12px; margin-bottom: 8px; border-radius: 6px; display: flex; justify-content: space-between; align-items: center; }
-      .txt-field { background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.12); color: #fff; padding: 6px 12px; border-radius: 4px; outline: none; font-size: 12px; }
-      .os-btn { background: rgba(255,255,255,0.07); color: #fff; border: 1px solid rgba(255,255,255,0.1); padding: 6px 14px; border-radius: 4px; cursor: pointer; font-size: 12px; transition: background 0.2s; }
-      .os-btn:hover { background: rgba(255,255,255,0.14); }
-      textarea { width: 100%; height: 90px; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.12); color: #fff; padding: 8px; border-radius: 4px; font-family: monospace; resize: none; margin-top: 4px; }
-    </style>
-  `;
-
-  if (appId === 'browser') {
-    return `<html><head>${commonFrameCSS}</head><body style="padding:0; display:flex; flex-direction:column; height:100vh; overflow:hidden;">
-      <div style="background: rgba(255,255,255,0.02); padding: 8px; display: flex; gap: 6px; border-bottom: 1px solid rgba(255,255,255,0.08);">
-        <input type="text" id="targetNavUrl" class="txt-field" value="https://google.com" style="flex:1;">
-        <button class="os-btn" onclick="navigateFrame()">Browse</button>
-      </div>
-      <iframe id="viewportCanvas" src="https://google.com" style="flex:1; width:100%; border:none; background:#fff;"></iframe>
-      <script>
-        function navigateFrame() {
-          let address = document.getElementById('targetNavUrl').value.trim();
-          if(!/^https?:\\/\\//i.test(address)) address = 'https://' + address;
-          document.getElementById('viewportCanvas').src = address;
-        }
-      </script>
-    </body></html>`;
-  }
-
-  if (appId === 'files') {
-    const disk = JSON.parse(localStorage.getItem(STORAGE.DISK) || '[]');
-    let itemsMarkup = disk.map(f => `
-      <div class="sys-card">
-        <div>📄 <strong>${f.name}</strong> (${f.content.length} characters)</div>
-        <button class="os-btn" onclick="alert(\`File Allocation View [${f.name}]:\\n\\n${f.content.replace(/`/g, '\\`').replace(/\n/g, '\\n')}\`)">Read</button>
-      </div>
-    `).join('');
-
-    return `<html><head>${commonFrameCSS}</head><body>
-      <h3>📁 Virtual Local Storage Workspace System Partition (C:\\)</h3>
-      <div style="margin-bottom:8px; font-size:12px; color:#9ca3af;">Commit custom resource vectors to system sectors:</div>
-      <input type="text" id="fileName" class="txt-field" placeholder="log_dump.txt" style="width:100%; margin-bottom:6px;">
-      <textarea id="filePayload" placeholder="Write plain text characters configuration vectors here..."></textarea>
-      <button class="os-btn" style="margin-top:6px; width:100%;" onclick="commitToDisk()">Execute Write Block Task</button>
-      <hr style="border-color:rgba(255,255,255,0.08); margin:14px 0;">
-      ${itemsMarkup || '<p style="color:#9ca3af;">Local directory partition sectors are clear.</p>'}
-      
-      <script>
-        function commitToDisk() {
-          const name = document.getElementById('fileName').value.trim();
-          const content = document.getElementById('filePayload').value;
-          if(!name) return alert('Operation Aborted: File descriptor token missing.');
-          let partition = JSON.parse(localStorage.getItem('${STORAGE.DISK}') || '[]');
-          partition.push({name, content});
-          localStorage.setItem('${STORAGE.DISK}', JSON.stringify(partition));
-          location.reload();
-        }
-      </script>
-    </body></html>`;
-  }
-
-  if (appId === 'tasks') {
-    return `<html><head>${commonFrameCSS}</head><body>
-      <h3>📊 Diagnostic System Task Architecture Monitor</h3>
-      <div class="sys-card"><div>💻 Virtual Kernel Engine Runtime</div><span style="color:#10b981">OPERATIONAL NORMAL</span></div>
-      <div class="sys-card"><div>🗄️ Local Disk Allocation Records</div><span>${localStorage.length} Partition Keys Loaded</span></div>
-      <div class="sys-card"><div>🛡️ System Background Daemons</div><span>Active Hardware Hooks Guard Verified</span></div>
-      <button class="os-btn" style="width:100%; margin-top:14px; background:#e81123; border:none;" onclick="window.parent.location.reload()">Force Restart Kernel Layer</button>
-    </body></html>`;
-  }
-
-  if (appId === 'mall') {
-    return `<html><head>${commonFrameCSS}</head><body>
-      <h3>🏪 Vav Store System Core Application Repository</h3>
-      <p style="color:#9ca3af; margin-top:0;">Download dynamic modules straight into running operating states:</p>
-      <div class="sys-card">
-        <div>🛡️ <strong>AdBlock Engine Core Hook</strong><br><small style="color:#9ca3af">Sifting layout nodes to isolate running frame telemetry elements.</small></div>
-        <button class="os-btn" onclick="alert('Module verified. Drivers loaded.')">Install</button>
-      </div>
-      <div class="sys-card">
-        <div>🎨 <strong>Cyberpunk Terminal Color Matrix</strong><br><small style="color:#9ca3af">Forces systemic color arrays down into visual workspace vectors.</small></div>
-        <button class="os-btn" onclick="alert('Interface package active.')">Install</button>
-      </div>
-    </body></html>`;
-  }
-
-  if (appId === 'settings') {
-    return `<html><head>${commonFrameCSS}</head><body>
-      <h3>⚙️ Operational Environment System Properties</h3>
-      <div class="sys-card"><div>Product Name</div><strong>VavWindows Standalone Core Edition</strong></div>
-      <div class="sys-card"><div>Kernel Thread Pipeline</div><strong>Isolated Browser Tab Container Interface</strong></div>
-      <div class="sys-card"><div>Memory Map Allocation</div><strong>Synchronous Base64 Storage Cluster</strong></div>
-      <button class="os-btn" onclick="alert('Telemetry channels reporting stable operation.')">Run Framework Diagnostics</button>
-    </body></html>`;
-  }
-
-  return `<html><body>System Binary Module Address Reference Error.</body></html>`;
+function createTab(url='',activate=true){
+  if(!url) url = 'vav://home';
+  const id='t'+(nextTabId++);
+  const tab={id,url,history:url?[url]:[],i:url?0:-1,title:'New Tab',iframe:null,favicon:''};
+  tabs.push(tab);
+  if(activate) activateTab(id);
+  renderTabs();
 }
 
-// Bind sub-application router interfaces back to parent engine global scope
-window.getAppContentPayload = getAppContentPayload;
+function renderTabs(){
+  $('tabs').innerHTML='';
+  tabs.forEach(t=>{
+    const el=document.createElement('div');
+    el.className='tab'+(t.id===activeTabId?' active':'');
+    el.innerHTML=`<div class="favicon">${t.favicon?`<img src="${t.favicon}">`:''}</div>
+                  <div class="title">${t.title}</div>
+                  <div class="close">✕</div>`;
+    el.onclick=()=>activateTab(t.id);
+    el.querySelector('.close').onclick=(e)=>{e.stopPropagation();closeTab(t.id)};
+    $('tabs').appendChild(el);
+  });
+  const btn=document.createElement('button');btn.className='add-tab';btn.textContent='+';btn.onclick=()=>createTab('',true);
+  $('tabs').appendChild(btn);
+}
 
-// Execute desktop system bootstrap sequences immediately
-bootSystemOS();
+function activateTab(id){
+  activeTabId=id;renderTabs();renderWeb();
+  const t=getTab(id);addr.value=t.url||'';addrFav.src=t.favicon||'';
+}
+
+function getTab(id){return tabs.find(t=>t.id===id);}
+
+function closeTab(id){
+  const i=tabs.findIndex(x=>x.id===id);
+  if(i<0)return;
+  if(tabs[i].iframe)tabs[i].iframe.remove();
+  tabs.splice(i,1);
+  activeTabId=tabs.length?tabs[Math.max(0,i-1)].id:null;
+  renderTabs();renderWeb();
+}
+
+function renderWeb(){
+  tabs.forEach(t=>{
+    if(!t.iframe){
+      const ifr=document.createElement('iframe');ifr.className='webview';ifr.dataset.tab=t.id;webArea.appendChild(ifr);t.iframe=ifr;
+      ifr.addEventListener('load',()=>{
+        if(t.url.startsWith('vav://')) {
+          let name = t.url.replace('vav://','');
+          t.title = name ? name.charAt(0).toUpperCase() + name.slice(1) : 'Home';
+          t.favicon = '';
+        } else {
+          t.title=t.url||'New Tab';t.favicon=faviconFor(t.url);
+        }
+        renderTabs();if(t.id===activeTabId)addrFav.src=t.favicon;
+        loading.style.width='0%';status.textContent='Loaded';
+      });
+    }
+    t.iframe.style.display=t.id===activeTabId?'block':'none';
+    
+    if(t.id===activeTabId && t.url){
+      if(t.url.startsWith('vav://')) {
+        if(t.iframe.dataset.loadedUrl !== t.url) {
+          t.iframe.dataset.loadedUrl = t.url;
+          t.iframe.removeAttribute('src');
+          loading.style.width='70%';status.textContent='Loading internal page...';
+          t.iframe.srcdoc = getVavPage(t.url);
+        }
+      } else {
+        if(t.iframe.src!==t.url){
+          t.iframe.dataset.loadedUrl = '';
+          t.iframe.removeAttribute('srcdoc');
+          loading.style.width='70%';status.textContent='Loading...';
+          t.iframe.src=t.url;
+        }
+      }
+    }
+  });
+}
+
+function nav(raw){
+  const t=getTab(activeTabId);if(!t)return;
+  let u=raw.trim();if(!u)return;
+  
+  if(/^vav:\/\//i.test(u)){
+    // Pass custom internal protocols straight through
+  } else if(/\s/.test(u)||!u.includes('.')) {
+    u=searchSel.value+encodeURIComponent(u);
+  } else if(!/^https?:\/\//.test(u)) {
+    u='https://'+u;
+  }
+  
+  t.history=t.history.slice(0,t.i+1);t.history.push(u);t.i++;
+  t.url=u;addr.value=u;t.favicon=faviconFor(u);addrFav.src=t.favicon;
+  loading.style.width='40%';status.textContent='Loading...';
+  renderWeb();pushHist(u);
+}
+
+function pushHist(u){const h=JSON.parse(localStorage.getItem(STORAGE.HIST)||'[]');h.unshift({u,ts:Date.now()});localStorage.setItem(STORAGE.HIST,JSON.stringify(h.slice(0,100)));renderPanels();}
+function addBmk(u){const b=JSON.parse(localStorage.getItem(STORAGE.BOOK)||'[]');if(!b.find(x=>x.u===u)){b.unshift({u,ts:Date.now()});localStorage.setItem(STORAGE.BOOK,JSON.stringify(b));renderPanels();}}
+
+function renderPanels(){
+  bookmarksEl.innerHTML='';JSON.parse(localStorage.getItem(STORAGE.BOOK)||'[]').forEach(x=>{
+    const d=document.createElement('div');d.className='card';d.innerHTML=`<div>${x.u}</div><small>★</small>`;d.onclick=()=>nav(x.u);bookmarksEl.appendChild(d);
+  });
+  historyEl.innerHTML='';JSON.parse(localStorage.getItem(STORAGE.HIST)||'[]').forEach(x=>{
+    const d=document.createElement('div');d.className='card';d.innerHTML=`<div>${x.u}</div><small>${new Date(x.ts).toLocaleTimeString()}</small>`;d.onclick=()=>nav(x.u);historyEl.appendChild(d);
+  });
+}
+
+$('goBtn').onclick=()=>nav(addr.value);addr.onkeydown=e=>{if(e.key==='Enter')nav(addr.value);}
+$('reload').onclick=()=>{const t=getTab(activeTabId);if(t) { if(t.url.startsWith('vav://')) { t.iframe.srcdoc = getVavPage(t.url); } else { t.iframe.src=t.url; } } }
+$('home').onclick=()=>nav('vav://home');
+$('bookmarkBtn').onclick=()=>{const t=getTab(activeTabId);if(t&&t.url)addBmk(t.url);}
+$('toggleBookmarks').onclick=()=>{$('sidePanels').style.display=$('sidePanels').style.display==='none'?'block':'none';}
+$('back').onclick=()=>{const t=getTab(activeTabId);if(t&&t.i>0){t.i--;t.url=t.history[t.i];addr.value=t.url;t.favicon=faviconFor(t.url);addrFav.src=t.favicon;renderWeb();}}
+$('forward').onclick=()=>{const t=getTab(activeTabId);if(t&&t.i<t.history.length-1){t.i++;t.url=t.history[t.i];addr.value=t.url;t.favicon=faviconFor(t.url);addrFav.src=t.favicon;renderWeb();}}
+
+createTab('',true);renderPanels();
+window.nav = nav;
