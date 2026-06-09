@@ -270,50 +270,80 @@ createTab('',true);renderPanels();
 window.nav = nav;
 // --- ALL-IN-ONE JS SPEECH TO TEXT LOGIC ---
 // --- ALL-IN-ONE JS SPEECH TO TEXT (MATERIAL SYMBOLS EDITION) ---
+// --- COMBINED JS: VOICE SEARCH & AI MODE AT THE OMNIBOX EDGE ---
 (function() {
   const addressInput = document.getElementById('address');
   const goBtn = document.getElementById('goBtn');
   const statusEl = document.getElementById('status');
 
-  if (!addressInput) return;
+  if (!addressInput || !goBtn) return;
 
-  // 1. Dynamically inject the Material Symbols font stylesheet into the page head
+  // 1. Dynamically inject the Material Symbols font stylesheet for the mic icon
   const link = document.createElement('link');
   link.rel = 'stylesheet';
   link.href = 'https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&icon_names=mic';
   document.head.appendChild(link);
 
-  // 2. Create the element using the Google Material Symbol class setup
+  // 2. Create the AI Mode Button
+  const aiBtn = document.createElement('div');
+  aiBtn.id = 'aiModeBtn';
+  aiBtn.innerText = 'AI Mode';
+  aiBtn.title = 'Go to Google AI';
+
+  // Style AI Mode to look like a sleek badge that fits perfectly inside the omnibox
+  aiBtn.style.background = 'linear-gradient(135deg, #00bcd4, #00838f)';
+  aiBtn.style.color = '#fff';
+  aiBtn.style.fontSize = '11px';
+  aiBtn.style.fontWeight = '600';
+  aiBtn.style.padding = '0 10px';
+  aiBtn.style.height = '24px'; // Slightly shorter to sit neatly inside the address bar
+  aiBtn.style.borderRadius = '12px';
+  aiBtn.style.display = 'inline-flex';
+  aiBtn.style.alignItems = 'center';
+  aiBtn.style.justifyContent = 'center';
+  aiBtn.style.cursor = 'pointer';
+  aiBtn.style.transition = 'transform 0.18s, box-shadow 0.18s';
+  aiBtn.style.userSelect = 'none';
+  aiBtn.style.marginRight = '6px';
+
+  // AI Button Hover Animations
+  aiBtn.addEventListener('mouseenter', () => { aiBtn.style.transform = 'scale(1.05)'; });
+  aiBtn.addEventListener('mouseleave', () => { aiBtn.style.transform = 'scale(1)'; });
+
+  // AI Button Click Action
+  aiBtn.addEventListener('click', () => {
+    addressInput.value = 'https://google.com/ai';
+    if (goBtn) goBtn.click();
+  });
+
+  // 3. Create the Microphone Button (Material Symbols)
   const micBtn = document.createElement('span');
   micBtn.id = 'micBtn';
   micBtn.className = 'material-symbols-outlined';
   micBtn.innerText = 'mic';
   micBtn.title = 'Search with your voice';
   
-  // 3. Inject styling parameters straight into the element
+  // Style Microphone
   micBtn.style.cursor = 'pointer';
-  micBtn.style.padding = '0 6px';
+  micBtn.style.padding = '0 4px';
   micBtn.style.opacity = '0.6';
-  micBtn.style.fontSize = '22px'; // Formatted cleanly to fit a 34px layout height
+  micBtn.style.fontSize = '22px';
   micBtn.style.transition = 'opacity 0.18s, transform 0.18s, color 0.18s';
   micBtn.style.userSelect = 'none';
   micBtn.style.display = 'inline-flex';
   micBtn.style.alignItems = 'center';
 
-  // Interactive Hover Behaviors
-  micBtn.addEventListener('mouseenter', () => { 
-    micBtn.style.opacity = '1'; 
-    micBtn.style.transform = 'scale(1.08)'; 
-  });
-  micBtn.addEventListener('mouseleave', () => { 
-    micBtn.style.opacity = '0.6'; 
-    micBtn.style.transform = 'scale(1)'; 
-  });
+  // Mic Hover Animations
+  micBtn.addEventListener('mouseenter', () => { micBtn.style.opacity = '1'; micBtn.style.transform = 'scale(1.1)'; });
+  micBtn.addEventListener('mouseleave', () => { micBtn.style.opacity = '0.6'; micBtn.style.transform = 'scale(1)'; });
 
-  // 4. Attach layout node right next to the omnibox text field
-  addressInput.parentNode.insertBefore(micBtn, addressInput.nextSibling);
+  // 4. Inject both elements to the right edge of the address bar
+  // Since the input has "flex: 1", anything inserted after it gets pushed to the right edge
+  const addressBarContainer = addressInput.parentNode;
+  addressBarContainer.insertBefore(aiBtn, addressInput.nextSibling);
+  addressBarContainer.insertBefore(micBtn, aiBtn.nextSibling);
 
-  // 5. Web Speech API Integration Core Logic
+  // 5. Web Speech API Logic for Voice Search
   if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     const recognition = new SpeechRecognition();
@@ -334,7 +364,7 @@ window.nav = nav;
 
     recognition.onstart = () => {
       isListening = true;
-      micBtn.style.color = '#ef5350'; // Highlights icon in red when active
+      micBtn.style.color = '#ef5350'; // Red highlight while recording
       micBtn.style.opacity = '1';
       addressInput.value = '';
       addressInput.placeholder = 'Listening...';
@@ -343,7 +373,7 @@ window.nav = nav;
 
     recognition.onend = () => {
       isListening = false;
-      micBtn.style.color = ''; // Defaults color state back down
+      micBtn.style.color = ''; // Reset color
       micBtn.style.opacity = '0.6';
       addressInput.placeholder = 'Search or type URL';
     };
@@ -353,7 +383,6 @@ window.nav = nav;
       addressInput.value = voiceResult;
       if (statusEl) statusEl.textContent = "Searching for: " + voiceResult;
       
-      // Short delay sequence before processing click events
       setTimeout(() => {
         if (goBtn) goBtn.click();
       }, 500);
@@ -365,61 +394,7 @@ window.nav = nav;
     };
 
   } else {
-    // Hide component gracefully if speech utility layers are absent
     micBtn.style.display = 'none';
   }
 })();
-// --- ALL-IN-ONE JS AI MODE BUTTON ---
-(function() {
-  const addressInput = document.getElementById('address');
-  const goBtn = document.getElementById('goBtn');
-  
-  // Safety check: make sure the toolbar elements exist first
-  if (!goBtn || !addressInput) return;
-
-  // 1. Create the AI Mode button element
-  const aiBtn = document.createElement('div');
-  aiBtn.id = 'aiModeBtn';
-  aiBtn.innerText = 'AI Mode';
-  aiBtn.title = 'Go to Google AI';
-
-  // 2. Style it to look sleek and match your browser's cyan accent theme
-  aiBtn.style.background = 'linear-gradient(135deg, #00bcd4, #00838f)';
-  aiBtn.style.color = '#fff';
-  aiBtn.style.fontSize = '12px';
-  aiBtn.style.fontWeight = '600';
-  aiBtn.style.padding = '0 14px';
-  aiBtn.style.height = '34px';
-  aiBtn.style.borderRadius = '20px'; // Pill shaped
-  aiBtn.style.display = 'inline-flex';
-  aiBtn.style.alignItems = 'center';
-  aiBtn.style.justifyContent = 'center';
-  aiBtn.style.cursor = 'pointer';
-  aiBtn.style.transition = 'transform 0.18s, box-shadow 0.18s';
-  aiBtn.style.userSelect = 'none';
-  aiBtn.style.marginRight = '4px';
-  aiBtn.style.boxShadow = '0 2px 8px rgba(0, 188, 212, 0.2)';
-
-  // Interactive Hover Effects
-  aiBtn.addEventListener('mouseenter', () => {
-    aiBtn.style.transform = 'scale(1.05)';
-    aiBtn.style.boxShadow = '0 4px 12px rgba(0, 188, 212, 0.4)';
-  });
-  aiBtn.addEventListener('mouseleave', () => {
-    aiBtn.style.transform = 'scale(1)';
-    aiBtn.style.boxShadow = '0 2px 8px rgba(0, 188, 212, 0.2)';
-  });
-
-  // 3. Define action when clicked (Fills the address bar and auto-submits)
-  aiBtn.addEventListener('click', () => {
-    addressInput.value = 'https://google.com/ai';
-    
-    // Automatically triggers your script's built-in navigation logic
-    if (goBtn) {
-      goBtn.click();
-    }
-  });
-
-  // 4. Position it directly to the left of your "Go" (▶) button
-  goBtn.parentNode.insertBefore(aiBtn, goBtn);
 })();
