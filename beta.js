@@ -269,35 +269,51 @@ $('forward').onclick=()=>{const t=getTab(activeTabId);if(t&&t.i<t.history.length
 createTab('',true);renderPanels();
 window.nav = nav;
 // --- ALL-IN-ONE JS SPEECH TO TEXT LOGIC ---
+// --- ALL-IN-ONE JS SPEECH TO TEXT (MATERIAL SYMBOLS EDITION) ---
 (function() {
   const addressInput = document.getElementById('address');
   const goBtn = document.getElementById('goBtn');
   const statusEl = document.getElementById('status');
 
-  // Safety check: make sure the address bar exists before doing anything
   if (!addressInput) return;
 
-  // 1. Dynamically create the microphone element
-  const micBtn = document.createElement('div');
+  // 1. Dynamically inject the Material Symbols font stylesheet into the page head
+  const link = document.createElement('link');
+  link.rel = 'stylesheet';
+  link.href = 'https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&icon_names=mic';
+  document.head.appendChild(link);
+
+  // 2. Create the element using the Google Material Symbol class setup
+  const micBtn = document.createElement('span');
   micBtn.id = 'micBtn';
-  micBtn.innerText = '🎙️';
+  micBtn.className = 'material-symbols-outlined';
+  micBtn.innerText = 'mic';
   micBtn.title = 'Search with your voice';
   
-  // 2. Inject styles directly through JS so you don't need CSS edits
+  // 3. Inject styling parameters straight into the element
   micBtn.style.cursor = 'pointer';
   micBtn.style.padding = '0 6px';
   micBtn.style.opacity = '0.6';
-  micBtn.style.transition = 'opacity 0.18s, transform 0.18s';
+  micBtn.style.fontSize = '22px'; // Formatted cleanly to fit a 34px layout height
+  micBtn.style.transition = 'opacity 0.18s, transform 0.18s, color 0.18s';
   micBtn.style.userSelect = 'none';
+  micBtn.style.display = 'inline-flex';
+  micBtn.style.alignItems = 'center';
 
-  // Add hover animations via JS listener
-  micBtn.addEventListener('mouseenter', () => { micBtn.style.opacity = '1'; micBtn.style.transform = 'scale(1.1)'; });
-  micBtn.addEventListener('mouseleave', () => { micBtn.style.opacity = '0.6'; micBtn.style.transform = 'scale(1)'; });
+  // Interactive Hover Behaviors
+  micBtn.addEventListener('mouseenter', () => { 
+    micBtn.style.opacity = '1'; 
+    micBtn.style.transform = 'scale(1.08)'; 
+  });
+  micBtn.addEventListener('mouseleave', () => { 
+    micBtn.style.opacity = '0.6'; 
+    micBtn.style.transform = 'scale(1)'; 
+  });
 
-  // 3. Insert the microphone element right after the address input box
+  // 4. Attach layout node right next to the omnibox text field
   addressInput.parentNode.insertBefore(micBtn, addressInput.nextSibling);
 
-  // 4. Web Speech API Logic
+  // 5. Web Speech API Integration Core Logic
   if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     const recognition = new SpeechRecognition();
@@ -318,7 +334,7 @@ window.nav = nav;
 
     recognition.onstart = () => {
       isListening = true;
-      micBtn.innerText = '🛑';
+      micBtn.style.color = '#ef5350'; // Highlights icon in red when active
       micBtn.style.opacity = '1';
       addressInput.value = '';
       addressInput.placeholder = 'Listening...';
@@ -327,7 +343,7 @@ window.nav = nav;
 
     recognition.onend = () => {
       isListening = false;
-      micBtn.innerText = '🎙️';
+      micBtn.style.color = ''; // Defaults color state back down
       micBtn.style.opacity = '0.6';
       addressInput.placeholder = 'Search or type URL';
     };
@@ -337,7 +353,7 @@ window.nav = nav;
       addressInput.value = voiceResult;
       if (statusEl) statusEl.textContent = "Searching for: " + voiceResult;
       
-      // Auto-trigger search after a brief glance at the text
+      // Short delay sequence before processing click events
       setTimeout(() => {
         if (goBtn) goBtn.click();
       }, 500);
@@ -349,7 +365,7 @@ window.nav = nav;
     };
 
   } else {
-    // Hide mic element if browser platform doesn't support speech tracking
+    // Hide component gracefully if speech utility layers are absent
     micBtn.style.display = 'none';
   }
 })();
