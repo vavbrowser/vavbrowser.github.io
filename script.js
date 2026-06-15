@@ -22,7 +22,7 @@ function renderTabs(){
     el.className='tab'+(t.id===activeTabId?' active':'');
     el.innerHTML=`<div class="favicon">${t.favicon?`<img src="${t.favicon}">`:''}</div>
                   <div class="title">${t.title}</div>
-                  <div class="close">✕8</div>`;
+                  <div class="close">✕</div>`;
     el.onclick=()=>activateTab(t.id);
     el.querySelector('.close').onclick=(e)=>{e.stopPropagation();closeTab(t.id)};
     $('tabs').appendChild(el);
