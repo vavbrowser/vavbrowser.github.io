@@ -684,3 +684,81 @@ if (osEnabled) {
     };
   })();
 }
+// --- OS SHELL INJECTION ---
+document.addEventListener('DOMContentLoaded', () => {
+  // 1. Create the Styles
+  const style = document.createElement('style');
+  style.innerHTML = `
+    .os-shelf {
+      height: 48px; background: #181c24; border-top: 1px solid #333;
+      display: flex; align-items: center; padding: 0 10px; gap: 10px;
+      z-index: 9999;
+    }
+    .os-btn {
+      width: 40px; height: 40px; border-radius: 8px;
+      display: grid; place-items: center; cursor: pointer; color: #fff;
+      transition: background 0.2s;
+    }
+    .os-btn:hover { background: rgba(255,255,255,0.1); }
+    .app-launcher {
+      position: absolute; bottom: 58px; left: 10px; width: 180px;
+      background: #1f242e; border-radius: 12px; padding: 10px;
+      display: none; flex-direction: column; box-shadow: 0 4px 15px #000;
+      z-index: 10000;
+    }
+    .app-item { padding: 10px; cursor: pointer; color: #fff; border-radius: 6px; }
+    .app-item:hover { background: rgba(255,255,255,0.1); }
+  `;
+  document.head.appendChild(style);
+
+  // 2. Create the Shelf
+  const shelf = document.createElement('div');
+  shelf.className = 'os-shelf';
+  shelf.innerHTML = `
+    <div class="os-btn" id="launcherBtn">⊞</div>
+    <div class="os-btn" onclick="openApp('Browser')">🌐</div>
+    <div class="os-btn" onclick="openApp('Notes')">📝</div>
+  `;
+  document.body.appendChild(shelf);
+
+  // 3. Create the Launcher
+  const launcher = document.createElement('div');
+  launcher.className = 'app-launcher';
+  launcher.id = 'appLauncher';
+  launcher.innerHTML = `
+    <div class="app-item" onclick="openApp('Browser')">Browser</div>
+    <div class="app-item" onclick="openApp('Notes')">Notepad</div>
+  `;
+  document.body.appendChild(launcher);
+
+  // 4. Launcher Logic
+  document.getElementById('launcherBtn').onclick = () => {
+    launcher.style.display = (launcher.style.display === 'flex' ? 'none' : 'flex');
+  };
+});
+
+// 5. App Manager Logic
+window.openApp = function(appName) {
+  const webArea = document.getElementById('webviewArea');
+  const launcher = document.getElementById('appLauncher');
+  
+  if (launcher) launcher.style.display = 'none';
+
+  if (appName === 'Browser') {
+    // Hide all custom app overlays to show standard browser
+    document.querySelectorAll('.os-app-window').forEach(el => el.remove());
+  } else if (appName === 'Notes') {
+    // Create an "App" overlay
+    const noteApp = document.createElement('div');
+    noteApp.className = 'os-app-window';
+    noteApp.style.cssText = 'position:absolute; inset:0; background:#0e1116; z-index:9000; padding:20px;';
+    noteApp.innerHTML = `
+      <div style="display:flex; justify-content:space-between;">
+        <h3>Notepad</h3>
+        <button onclick="this.parentElement.parentElement.remove()">Close</button>
+      </div>
+      <textarea style="width:100%; height:90%; background:#1f242e; color:#fff; border:none;"></textarea>
+    `;
+    webArea.appendChild(noteApp);
+  }
+};
