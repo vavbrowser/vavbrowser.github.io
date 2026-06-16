@@ -276,26 +276,3 @@ createTab('',true);renderPanels();
     micBtn.style.display = 'none';
   }
 })();
-
-
-// --- LIVE REPOSITORY SYNC & AUTOMATED HOT-RELOAD MODULE ---
-async function checkLiveUpdate() {
-  try {
-    const response = await fetch(`https://vavbrowser.github.io/version.json?t=${Date.now()}`);
-    if (response.ok) {
-      const data = await response.json();
-      if (data.version && data.version !== SCRIPT_VERSION && status) {
-        status.textContent = `New update compiled (v${data.version})! Refreshing modules...`;
-        status.style.background = "var(--accent)";
-        status.style.color = "#000";
-        status.style.fontWeight = "bold";
-        
-        setTimeout(() => {
-          window.location.reload(); 
-        }, 1500);
-      }
-    }
-  } catch(e) {}
-}
-setInterval(checkLiveUpdate, 30000); 
-checkLiveUpdate();
