@@ -3,8 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>tui lib</title>
+    <title>Cloud-Synced Library System</title>
+    
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+
     <style>
         :root {
             --primary: #2c3e50;
@@ -23,17 +28,21 @@
             color: var(--dark);
         }
 
-        .container {
-            max-width: 900px;
-            margin: 0 auto;
-        }
-
-        header {
-            text-align: center;
-            margin-bottom: 30px;
-        }
-
+        .container { max-width: 900px; margin: 0 auto; }
+        header { text-align: center; margin-bottom: 30px; }
         header h1 { color: var(--primary); margin-bottom: 5px; }
+
+        /* Sync Status Badge */
+        .sync-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+        .local-mode { background: #ffeaa7; color: #d63031; }
+        .cloud-mode { background: #dff9fb; color: #0097e6; }
 
         /* Auth Screen */
         .auth-container {
@@ -44,7 +53,6 @@
             border-radius: 12px;
             box-shadow: 0 4px 15px rgba(0,0,0,0.1);
         }
-
         .auth-tabs { display: flex; margin-bottom: 20px; border-bottom: 2px solid var(--light); }
         .tab { flex: 1; text-align: center; padding: 10px; cursor: pointer; font-weight: bold; color: #7f8c8d; }
         .tab.active { color: var(--accent); border-bottom: 2px solid var(--accent); margin-bottom: -2px; }
@@ -65,7 +73,6 @@
             border-radius: 12px;
             box-shadow: 0 4px 6px rgba(0,0,0,0.05);
         }
-
         .panel h2 { margin-top: 0; color: var(--primary); border-bottom: 2px solid var(--light); padding-bottom: 10px; }
 
         /* Forms */
@@ -82,7 +89,6 @@
         button:hover { background-color: #2980b9; }
         
         .logout-btn { background-color: var(--danger); width: auto; padding: 8px 15px; font-size: 14px; float: right; }
-        .logout-btn:hover { background-color: #c0392b; }
 
         /* Card Styling */
         .digital-card {
@@ -96,18 +102,11 @@
         .card-number { font-family: 'Courier New', monospace; color: #bdc3c7; }
         .card-footer { display: flex; justify-content: space-between; font-size: 12px; color: #bdc3c7; margin-top: 15px; }
 
-        /* Camera Scanner Styles */
-        #qr-reader {
-            border: 2px solid var(--accent) !important;
-            border-radius: 8px;
-            overflow: hidden;
-            background: #fafafa;
-        }
-        #qr-reader button {
-            background-color: var(--primary); color: white; padding: 6px 12px; margin: 5px; font-size: 13px; width: auto;
-        }
+        /* Scanner */
+        #qr-reader { border: 2px solid var(--accent) !important; border-radius: 8px; overflow: hidden; background: #fafafa; }
+        #qr-reader button { background-color: var(--primary); color: white; padding: 6px 12px; margin: 5px; font-size: 13px; width: auto; }
 
-        /* Books Section */
+        /* Books */
         .management-section { grid-column: 1 / -1; }
         .book-list { list-style: none; padding: 0; }
         .book-item {
@@ -115,12 +114,6 @@
             padding: 12px; border-radius: 6px; margin-bottom: 10px; align-items: center;
         }
         .status-badge { background: var(--success); color: white; padding: 3px 8px; border-radius: 4px; font-size: 12px; }
-        
-        .clear-data-btn {
-            background-color: transparent; color: var(--danger); border: 1px solid var(--danger);
-            width: auto; padding: 5px 10px; font-size: 12px; margin-top: 20px;
-        }
-        .clear-data-btn:hover { background: var(--danger); color: white; }
     </style>
 </head>
 <body>
@@ -128,7 +121,8 @@
 <div class="container">
     <header>
         <h1>tui Library</h1>
-        <p>Live Camera Scanning & Persistent Storage Portal</p>
+        <p>Live Camera Scanning & Cloud-Synced System</p>
+        <div id="syncStatus" class="sync-badge local-mode">Checking connection status...</div>
     </header>
 
     <div class="auth-container" id="authScreen">
@@ -142,7 +136,7 @@
                 <div class="form-group">
                     <label for="loginCardNum">Library Card Number</label>
                     <input type="text" id="loginCardNum" placeholder="LIB-XXXXXXXX" required>
-                    <small style="color:#7f8c8d;">Create a card first</small>
+                    <small style="color:#7f8c8d;">Use a card you generated</small>
                 </div>
                 <button type="submit">Access System</button>
             </form>
@@ -155,14 +149,9 @@
                     <input type="text" id="fullName" placeholder="Jane Doe" required>
                 </div>
                 <div class="form-group">
-                    <label for="email">Email Address</label>
-                    <input type="email" id="email" placeholder="jane@example.com" required>
-                </div>
-                <div class="form-group">
                     <label for="memberType">Membership Tier</label>
                     <select id="memberType">
                         <option value="Standard">Standard</option>
-                        <option value="Premium">Premium</option>
                         <option value="Student">Student</option>
                     </select>
                 </div>
@@ -185,23 +174,21 @@
                         <span class="card-type" id="lblTier">Standard</span>
                     </div>
                     <div class="card-body">
-                        <p class="user-name" id="lblName">tui Dude</p>
+                        <p class="user-name" id="lblName">tui dude</p>
                         <p class="card-number" id="lblCardNum">CARD # LIB-XXXXXXXX</p>
                     </div>
                     <div class="card-footer">
                         <span>Issued: <span id="lblDate">--/--/----</span></span>
-                        <span>Memory Status: SAVED</span>
+                        <span id="lblMemoryType">Memory Status: SAVED</span>
                     </div>
                 </div>
-                <button class="clear-data-btn" onclick="factoryReset()">Clear All Browser Storage</button>
             </div>
 
             <div class="panel">
                 <h2>Live Camera Scanner</h2>
                 <p style="font-size: 13px; color: #7f8c8d; margin-top: -10px; margin-bottom: 15px;">
-                    Grant browser camera access. Hold up a real book barcode to scan, or type a barcode manually below if your camera is blocked.
+                    Hold up a real book barcode to scan, or type one manually below.
                 </p>
-                
                 <div id="qr-reader" style="width: 100%;"></div>
 
                 <div style="margin-top: 15px; padding-top: 15px; border-top: 1px dashed #ccc; display: flex; gap: 10px;">
@@ -211,7 +198,7 @@
             </div>
 
             <div class="panel management-section">
-                <h3>Your Permanent Borrowed Collection</h3>
+                <h3>Your Cloud Borrowed Collection</h3>
                 <ul class="book-list" id="borrowedList">
                     <li id="emptyMsg" style="color: #7f8c8d; font-style: italic;">No books scanned into history yet.</li>
                 </ul>
@@ -221,12 +208,26 @@
 </div>
 
 <script>
-    // --- Local Hardware Memory (Syncs with LocalStorage) ---
-    let systemDatabase = JSON.parse(localStorage.getItem('lib_users')) || {
-        "LIB-99999999": { name: "System Administrator", tier: "Premium", date: "01/01/2026", books: [] }
+    // ==========================================
+    // 3. STEP ONE: PASTE YOUR FIREBASE CONFIG HERE TO SYNC
+    // ==========================================
+    const firebaseConfig = {
+        apiKey: "AIzaSyDwDe910zdnwDi8Cns-AFkCMZbxXzddJuA",
+        authDomain: "server-bc966.firebaseapp.com",
+        databaseURL: "https://server-bc966-default-rtdb.firebaseio.com",
+        projectId: "server-bc966",
+        storageBucket: "erver-bc966.firebasestorage.app",
+        messagingSenderId: "658451047484",
+        appId: "1:658451047484:web:38d3fa3cd5b969b9d6cf39"
     };
 
-    // Global Pre-defined Directory for known items
+    // System variables
+    let useCloud = false;
+    let database = null;
+    let systemDatabase = {};
+    let activeSessionCardId = null;
+    let html5QrcodeScanner = null;
+
     const bookDirectory = {
         "9780141439518": "Pride & Prejudice",
         "9780451524935": "1984 (George Orwell)",
@@ -234,10 +235,24 @@
         "9780743273565": "The Great Gatsby"
     };
 
-    let activeSessionCardId = null;
-    let html5QrcodeScanner = null;
+    // Initialize Connection Mode
+    if (firebaseConfig.apiKey !== "YOUR_API_KEY") {
+        firebase.initializeApp(firebaseConfig);
+        database = firebase.database();
+        useCloud = true;
+        document.getElementById('syncStatus').innerText = "☁️ Cloud Sync Active (Multi-Device)";
+        document.getElementById('syncStatus').className = "sync-badge cloud-mode";
+        document.getElementById('lblMemoryType').innerText = "Memory Status: CLOUD LIVE";
+    } else {
+        // Fallback to local storage if keys aren't set up yet
+        systemDatabase = JSON.parse(localStorage.getItem('lib_users')) || {
+            "LIB-99999999": { name: "Offline Admin", tier: "Premium", date: "01/01/2026", books: [] }
+        };
+        document.getElementById('syncStatus').innerText = "💻 Local Sandbox Mode (Single Device Only)";
+        document.getElementById('syncStatus').className = "sync-badge local-mode";
+    }
 
-    // --- Tab Switching Logic ---
+    // --- Tab Switching ---
     function switchAuthTab(tabName) {
         document.getElementById('tabSignIn').classList.remove('active');
         document.getElementById('tabCreate').classList.remove('active');
@@ -253,7 +268,17 @@
         }
     }
 
-    // --- Action: Create Card & Save to Memory ---
+    // --- Save Data Dispatcher (Cloud vs Local) ---
+    function syncUserData(cardId, userData) {
+        if (useCloud) {
+            database.ref('users/' + cardId).set(userData);
+        } else {
+            systemDatabase[cardId] = userData;
+            localStorage.setItem('lib_users', JSON.stringify(systemDatabase));
+        }
+    }
+
+    // --- Action: Create Card ---
     document.getElementById('createCardForm').addEventListener('submit', function(e) {
         e.preventDefault();
         const name = document.getElementById('fullName').value;
@@ -261,163 +286,141 @@
         const generatedCardId = 'LIB-' + Math.floor(10000000 + Math.random() * 90000000);
         const todayDate = new Date().toLocaleDateString();
 
-        systemDatabase[generatedCardId] = {
-            name: name,
-            tier: tier,
-            date: todayDate,
-            books: []
-        };
+        const newUser = { name: name, tier: tier, date: todayDate, books: [] };
+        
+        syncUserData(generatedCardId, newUser);
 
-        localStorage.setItem('lib_users', JSON.stringify(systemDatabase));
-
-        alert(`Card Generated!\nYour System ID is: ${generatedCardId}`);
+        alert(`Card Generated!\nYour System ID is: ${generatedCardId}\nUse this to log in on any device.`);
         document.getElementById('createCardForm').reset();
         document.getElementById('loginCardNum').value = generatedCardId;
         switchAuthTab('signin');
     });
 
-    // --- Action: User Sign-In Validation ---
+    // --- Action: Sign-In ---
     document.getElementById('signInForm').addEventListener('submit', function(e) {
         e.preventDefault();
         const inputCardId = document.getElementById('loginCardNum').value.trim();
 
-        if (systemDatabase[inputCardId]) {
-            activeSessionCardId = inputCardId;
-            
-            document.getElementById('lblName').innerText = systemDatabase[inputCardId].name;
-            document.getElementById('lblTier').innerText = systemDatabase[inputCardId].tier;
-            document.getElementById('lblCardNum').innerText = `CARD # ${inputCardId}`;
-            document.getElementById('lblDate').innerText = systemDatabase[inputCardId].date;
-
-            document.getElementById('authScreen').style.display = 'none';
-            document.getElementById('dashboardScreen').style.display = 'block';
-
-            renderUserBooks();
-            initCameraScanner();
+        if (useCloud) {
+            // Read from Live Cloud database
+            database.ref('users/' + inputCardId).once('value').then((snapshot) => {
+                if (snapshot.exists()) {
+                    bootDashboard(inputCardId, snapshot.val());
+                    // Start live listening loop (if data changes on another device, update screen instantly)
+                    database.ref('users/' + inputCardId).on('value', (snap) => {
+                        if (snap.exists()) renderUserBooks(snap.val().books || []);
+                    });
+                } else {
+                    alert("Card not found on cloud database.");
+                }
+            });
         } else {
-            alert("Error: Card number not found. Make sure to generate one first.");
+            // Read from Local Offline Database
+            if (systemDatabase[inputCardId]) {
+                bootDashboard(inputCardId, systemDatabase[inputCardId]);
+                renderUserBooks(systemDatabase[inputCardId].books || []);
+            } else {
+                alert("Card not found locally.");
+            }
         }
     });
 
-    // --- Action: Active Camera Scanner Loop ---
+    function bootDashboard(cardId, userData) {
+        activeSessionCardId = cardId;
+        document.getElementById('lblName').innerText = userData.name;
+        document.getElementById('lblTier').innerText = userData.tier;
+        document.getElementById('lblCardNum').innerText = `CARD # ${cardId}`;
+        document.getElementById('lblDate').innerText = userData.date;
+
+        document.getElementById('authScreen').style.display = 'none';
+        document.getElementById('dashboardScreen').style.display = 'block';
+
+        initCameraScanner();
+    }
+
+    // --- Action: Camera Scanning ---
     function initCameraScanner() {
         if (html5QrcodeScanner) { html5QrcodeScanner.clear(); }
-
-        html5QrcodeScanner = new Html5QrcodeScanner(
-            "qr-reader", { 
-                fps: 15, 
-                qrbox: { width: 260, height: 160 },
-                rememberLastUsedCamera: true
-            }, false);
-        
-        html5QrcodeScanner.render(onScanSuccess, onScanFailure);
+        html5QrcodeScanner = new Html5QrcodeScanner("qr-reader", { fps: 15, qrbox: { width: 260, height: 160 } }, false);
+        html5QrcodeScanner.render(onScanSuccess);
     }
 
-    function onScanFailure(error) {
-        // Quietly handle frame-by-frame scanner mismatching to prevent console noise
+    function onScanSuccess(decodedText) {
+        let bookTitle = bookDirectory[decodedText] || `Unknown Book (${decodedText})`;
+        const deadline = new Date();
+        deadline.setDate(deadline.getDate() + 14);
+
+        const newBook = { title: bookTitle, barcode: decodedText, dueDate: deadline.toLocaleDateString() };
+
+        if (useCloud) {
+            database.ref('users/' + activeSessionCardId).once('value').then((snapshot) => {
+                let currentData = snapshot.val();
+                if (!currentData.books) currentData.books = [];
+                currentData.books.push(newBook);
+                syncUserData(activeSessionCardId, currentData);
+            });
+        } else {
+            if (!systemDatabase[activeSessionCardId].books) systemDatabase[activeSessionCardId].books = [];
+            systemDatabase[activeSessionCardId].books.push(newBook);
+            syncUserData(activeSessionCardId, systemDatabase[activeSessionCardId]);
+            renderUserBooks(systemDatabase[activeSessionCardId].books);
+        }
     }
 
-    function onScanSuccess(decodedText, decodedResult) {
-        // Play quick browser audio notification beep
-        try {
-            let audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            let osc = audioCtx.createOscillator();
-            osc.type = 'sine'; osc.frequency.setValueAtTime(880, audioCtx.currentTime);
-            osc.connect(audioCtx.destination); osc.start(); osc.stop(audioCtx.currentTime + 0.12);
-        } catch(e) {}
-
-        let bookTitle = bookDirectory[decodedText] || `Unknown Item (ID: ${decodedText})`;
-        const returnDeadline = new Date();
-        returnDeadline.setDate(returnDeadline.getDate() + 14);
-
-        const newBookRecord = {
-            title: bookTitle,
-            barcode: decodedText,
-            dueDate: returnDeadline.toLocaleDateString()
-        };
-
-        systemDatabase[activeSessionCardId].books.push(newBookRecord);
-        localStorage.setItem('lib_users', JSON.stringify(systemDatabase));
-
-        renderUserBooks();
-        alert(`Scanned: "${bookTitle}" added to your account!`);
-    }
-
-    // --- Action: Manual Fallback Scanner Click Handler ---
+    // --- Manual Fallback input ---
     document.getElementById('manualScanBtn').addEventListener('click', function() {
         const inputField = document.getElementById('manualBarcode');
-        const typedCode = inputField.value.trim();
-        
-        if (typedCode === "") {
-            alert("Please enter a barcode number first!");
-            return;
+        if (inputField.value.trim() !== "") {
+            onScanSuccess(inputField.value.trim());
+            inputField.value = "";
         }
-        
-        onScanSuccess(typedCode, null);
-        inputField.value = ""; 
     });
 
-    // --- Action: Print Stored Books & Generate Dynamic Return Buttons ---
-    function renderUserBooks() {
+    // --- Print UI Books & Handle Returns ---
+    function renderUserBooks(booksArray) {
         const listContainer = document.getElementById('borrowedList');
         listContainer.innerHTML = ""; 
 
-        const userBooks = systemDatabase[activeSessionCardId].books || [];
-
-        if(userBooks.length === 0) {
-            listContainer.innerHTML = `<li id="emptyMsg" style="color: #7f8c8d; font-style: italic;">No books scanned into history yet.</li>`;
+        if(!booksArray || booksArray.length === 0) {
+            listContainer.innerHTML = `<li id="emptyMsg" style="color: #7f8c8d; font-style: italic;">No books checked out.</li>`;
             return;
         }
 
-        userBooks.forEach((book, index) => {
+        booksArray.forEach((book, index) => {
             const row = document.createElement('li');
             row.className = 'book-item';
             row.innerHTML = `
                 <div>
                     <strong>${book.title}</strong><br>
-                    <small style="color: #7f8c8d;">Data ID: ${book.barcode} | Return Due: ${book.dueDate}</small>
+                    <small style="color: #7f8c8d;">ID: ${book.barcode} | Due: ${book.dueDate}</small>
                 </div>
-                <div style="display: flex; align-items: center; gap: 10px;">
-                    <span class="status-badge">Checked Out</span>
-                    <button onclick="returnBook(${index})" style="background-color: var(--danger); width: auto; padding: 6px 12px; font-size: 12px; margin: 0;">Return Book</button>
-                </div>
+                <button onclick="returnBook(${index})" style="background-color: var(--danger); width: auto; padding: 6px 12px; font-size: 12px; margin: 0;">Return</button>
             `;
             listContainer.appendChild(row);
         });
     }
 
-    // --- Feature New Action: Return Book Logic ---
     function returnBook(index) {
-        const targetBookTitle = systemDatabase[activeSessionCardId].books[index].title;
-        
-        if(confirm(`Confirm checkout processing: Would you like to return "${targetBookTitle}"?`)) {
-            // Cut item from array using index positioning mutations
+        if (useCloud) {
+            database.ref('users/' + activeSessionCardId).once('value').then((snapshot) => {
+                let currentData = snapshot.val();
+                currentData.books.splice(index, 1);
+                syncUserData(activeSessionCardId, currentData);
+            });
+        } else {
             systemDatabase[activeSessionCardId].books.splice(index, 1);
-            
-            // Sync mutated state back to global system localStorage
-            localStorage.setItem('lib_users', JSON.stringify(systemDatabase));
-            
-            // Redraw table interface state 
-            renderUserBooks();
+            syncUserData(activeSessionCardId, systemDatabase[activeSessionCardId]);
+            renderUserBooks(systemDatabase[activeSessionCardId].books);
         }
     }
 
-    // --- Management Helper Actions ---
     function logout() {
-        if(html5QrcodeScanner) {
-            html5QrcodeScanner.clear().catch(err => console.log(err));
-        }
+        if(html5QrcodeScanner) { html5QrcodeScanner.clear().catch(err => console.log(err)); }
+        if (useCloud) { database.ref('users/' + activeSessionCardId).off(); } // Turn off cloud listener
         activeSessionCardId = null;
         document.getElementById('dashboardScreen').style.display = 'none';
         document.getElementById('authScreen').style.display = 'block';
         document.getElementById('signInForm').reset();
-    }
-
-    function factoryReset() {
-        if(confirm("Completely erase browser data for this library app? All created cards and logs will be lost.")) {
-            localStorage.clear();
-            location.reload();
-        }
     }
 </script>
 
