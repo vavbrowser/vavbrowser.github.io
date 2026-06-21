@@ -491,4 +491,3 @@ window.nav = nav;
     document.head.appendChild(glassStyle);
   }
 })();
-})();
