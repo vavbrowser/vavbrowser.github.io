@@ -138,9 +138,12 @@ if (target === 'new-tab') {
   }
 
   if (target === 'flags') {
+    // Read current live status of Liquid Glass Mode from parent storage
+    const liquidGlassState = window.parent.localStorage.getItem('mc_flag_liquid_glass') || 'Default';
+
     return `<html><head>${sharedStyle}
       <style>
-        .flag-item { display: flex; justify-content: space-between; align-items: center; background: #1f242e; padding: 14px; margin: 10px 0; border-radius: 8px; }
+        .flag-item { display: flex; justify-content: space-between; align-items: center; background: #1f242e; padding: 14px; margin: 10px 0; border-radius: 8px; text-align: left; }
         .flag-desc { color: #9ca3af; font-size: 13px; margin-top: 4px; }
         select { background: #2a313e; color: #fff; border: 1px solid #3f485c; padding: 6px 12px; border-radius: 6px; cursor: pointer; outline: none; }
       </style>
@@ -149,6 +152,18 @@ if (target === 'new-tab') {
         <h1>Vav Experimental Flags</h1>
         <p style="color: #ffb74d;">⚠️ WARNING: These settings are strictly experimental. Toggling options might compromise UI rendering stability.</p>
         
+        <div class="flag-item">
+          <div>
+            <strong>#liquid-glass-ui-mode</strong>
+            <div class="flag-desc">Applies advanced hardware-accelerated frosted glass textures and backdrop blur filters across control panels.</div>
+          </div>
+          <select onchange="window.parent.localStorage.setItem('mc_flag_liquid_glass', this.value); location.reload(); alert('Flag saved. The browser environment will update.');">
+            <option ${liquidGlassState === 'Default' ? 'selected' : ''}>Default</option>
+            <option ${liquidGlassState === 'Enabled' ? 'selected' : ''}>Enabled</option>
+            <option ${liquidGlassState === 'Disabled' ? 'selected' : ''}>Disabled</option>
+          </select>
+        </div>
+
         <div class="flag-item">
           <div>
             <strong>#smooth-kinetic-scrolling</strong>
@@ -172,22 +187,9 @@ if (target === 'new-tab') {
             <option>Disabled</option>
           </select>
         </div>
-
-        <div class="flag-item">
-          <div>
-            <strong>#force-gpu-rasterization</strong>
-            <div class="flag-desc">Skips default CPU processing logic to force layer painting straight onto active GPU vectors.</div>
-          </div>
-          <select onchange="alert('Property saved. Restart shell to load updates.')">
-            <option>Default</option>
-            <option>Enabled</option>
-            <option selected>Disabled</option>
-          </select>
-        </div>
       </div>
     </body></html>`;
   }
-
   return `<html><head>${sharedStyle}</head><body><h1>404</h1><p>Internal address <code>vav://${target}</code> not found.</p></body></html>`;
 }
 function renderTabs(){
@@ -454,4 +456,26 @@ window.nav = nav;
 
   // 4. Position it directly to the left of your "Go" (▶) button
   goBtn.parentNode.insertBefore(aiBtn, goBtn);
+})();
+
+// --- LIQUID GLASS FLAG INTERPOLATOR ---
+(function applyLiquidGlassFlag() {
+  const isGlassEnabled = localStorage.getItem('mc_flag_liquid_glass') === 'Enabled';
+  
+  if (isGlassEnabled) {
+    // Dynamic glass UI styling rules
+    const glassStyle = document.createElement('style');
+    glassStyle.textContent = `
+      #tabs, .tab.active, #sidePanels, .nav-btn, #aiModeBtn {
+        background: rgba(24, 28, 36, 0.65) !important;
+        backdrop-filter: blur(16px) saturate(140%) !important;
+        -webkit-backdrop-filter: blur(16px) saturate(140%) !important;
+        border-color: rgba(255, 255, 255, 0.08) !important;
+      }
+      .tab:not(.active) {
+        background: rgba(14, 17, 22, 0.4) !important;
+      }
+    `;
+    document.head.appendChild(glassStyle);
+  }
 })();
