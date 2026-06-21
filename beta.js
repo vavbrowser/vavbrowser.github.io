@@ -12,6 +12,15 @@ function faviconFor(url){
   }catch(e){return "";}
 }
 
+
+function createTab(url='',activate=true){
+  if(!url) url = 'vav://new-tab';
+  const id='t'+(nextTabId++);
+  const tab={id,url,history:url?[url]:[],i:url?0:-1,title:'New Tab',iframe:null,favicon:''};
+  tabs.push(tab);
+  if(activate) activateTab(id);
+  renderTabs();
+}
 // Generates internal browser page structures
 function getVavPage(url) {
   const target = url.toLowerCase().replace('vav://', '').trim() || 'new-tab';
@@ -33,7 +42,22 @@ function getVavPage(url) {
   `;
 
   if (target === 'new-tab') {
-    return `<html><head>${sharedStyle}</head><body>
+    // Check if a user custom wallpaper is saved
+    const savedWallpaper = localStorage.getItem('mc_wallpaper') || '';
+    
+    // Generate custom CSS override if a wallpaper is active
+    const wallpaperStyle = savedWallpaper 
+      ? `<style>
+          body { 
+            background-image: linear-gradient(rgba(14, 17, 22, 0.6), rgba(14, 17, 22, 0.85)), url('${savedWallpaper}'); 
+            background-size: cover; 
+            background-position: center; 
+            background-attachment: fixed; 
+          }
+         </style>` 
+      : '';
+
+    return `<html><head>${sharedStyle}${wallpaperStyle}</head><body>
       <div style="margin-top: 10vh;">
         <h1>VAV browser</h1>
         <p>beta 150.0</p>
@@ -44,6 +68,7 @@ function getVavPage(url) {
             <button class="nav-btn" onclick="window.parent.nav('vav://history')">History</button>
             <button class="nav-btn" onclick="window.parent.nav('vav://mall')">Mall</button>
             <button class="nav-btn" onclick="window.parent.nav('vav://flags')">Flags</button>
+            <button class="nav-btn" style="border-color: #00bcd4;" onclick="let url = prompt('Enter image URL for background (Leave blank to clear):', '${savedWallpaper}'); if(url !== null){ localStorage.setItem('mc_wallpaper', url.trim()); location.reload(); }">🖼️ Wallpaper</button>
           </div>
         </div>
       </div>
@@ -148,16 +173,6 @@ function getVavPage(url) {
 
   return `<html><head>${sharedStyle}</head><body><h1>404</h1><p>Internal address <code>vav://${target}</code> not found.</p></body></html>`;
 }
-
-function createTab(url='',activate=true){
-  if(!url) url = 'vav://new-tab';
-  const id='t'+(nextTabId++);
-  const tab={id,url,history:url?[url]:[],i:url?0:-1,title:'New Tab',iframe:null,favicon:''};
-  tabs.push(tab);
-  if(activate) activateTab(id);
-  renderTabs();
-}
-
 function renderTabs(){
   $('tabs').innerHTML='';
   tabs.forEach(t=>{
