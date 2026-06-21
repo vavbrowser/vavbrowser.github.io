@@ -458,7 +458,7 @@ window.nav = nav;
   goBtn.parentNode.insertBefore(aiBtn, goBtn);
 })();
 
-// --- LIQUID GLASS FLAG INTERPOLATOR ---
+// --- LIQUID GLASS FLAG INTERPOLATOR (WITH TRANSPARENT TABS) ---
 (function applyLiquidGlassFlag() {
   const isGlassEnabled = localStorage.getItem('mc_flag_liquid_glass') === 'Enabled';
   
@@ -466,16 +466,29 @@ window.nav = nav;
     // Dynamic glass UI styling rules
     const glassStyle = document.createElement('style');
     glassStyle.textContent = `
+      /* Main panels, active tab, and buttons get the frosted glass treatment */
       #tabs, .tab.active, #sidePanels, .nav-btn, #aiModeBtn {
-        background: rgba(24, 28, 36, 0.65) !important;
+        background: rgba(24, 28, 36, 0.5) !important;
         backdrop-filter: blur(16px) saturate(140%) !important;
         -webkit-backdrop-filter: blur(16px) saturate(140%) !important;
-        border-color: rgba(255, 255, 255, 0.08) !important;
+        border: 1px solid rgba(255, 255, 255, 0.08) !important;
       }
+      
+      /* Inactive tabs are made completely transparent but retain a slight hover edge */
       .tab:not(.active) {
-        background: rgba(14, 17, 22, 0.4) !important;
+        background: transparent !important;
+        border: 1px solid transparent !important;
+        opacity: 0.7;
+        transition: all 0.2s ease;
+      }
+      
+      /* Subtle background tint when hovering over an inactive transparent tab */
+      .tab:not(.active):hover {
+        background: rgba(255, 255, 255, 0.05) !important;
+        opacity: 1;
       }
     `;
     document.head.appendChild(glassStyle);
   }
+})();
 })();
