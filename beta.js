@@ -40,12 +40,10 @@ function getVavPage(url) {
       .nav-btn:hover { background: #00bcd4; color: #0e1116; border-color: #00bcd4; }
     </style>
   `;
-
-  if (target === 'new-tab') {
-    // Check if a user custom wallpaper (URL or Base64 upload) is saved
+if (target === 'new-tab') {
+    // This runs in the parent context when generating, which is fine
     const savedWallpaper = localStorage.getItem('mc_wallpaper') || '';
     
-    // Generate custom CSS override if a wallpaper is active
     const wallpaperStyle = savedWallpaper 
       ? `<style>
           body { 
@@ -76,10 +74,10 @@ function getVavPage(url) {
                 const reader = new FileReader();
                 reader.onload = function(e) {
                   try {
-                    localStorage.setItem('mc_wallpaper', e.target.result);
-                    location.reload();
+                    window.parent.localStorage.setItem('mc_wallpaper', e.target.result);
+                    window.parent.nav('vav://new-tab');
                   } catch(err) {
-                    alert('Image file is too large! Try a smaller image or a web link.');
+                    alert('Image file is too large for localStorage! Try a smaller compressed image.');
                   }
                 };
                 reader.readAsDataURL(file);
@@ -87,12 +85,13 @@ function getVavPage(url) {
             ">
             
             <button class="nav-btn" style="border-color: #00bcd4;" onclick="document.getElementById('wpUpload').click()">📁 Upload Wallpaper</button>
-            ${savedWallpaper ? `<button class="nav-btn" style="border-color: #ef5350; color: #ef5350;" onclick="localStorage.removeItem('mc_wallpaper'); location.reload();">✕ Clear</button>` : ''}
+            ${savedWallpaper ? `<button class="nav-btn" style="border-color: #ef5350; color: #ef5350;" onclick="window.parent.localStorage.removeItem('mc_wallpaper'); window.parent.nav('vav://new-tab');">✕ Clear</button>` : ''}
           </div>
         </div>
       </div>
     </body></html>`;
   }
+  
   if (target === 'bookmarks') {
     const data = JSON.parse(localStorage.getItem(STORAGE.BOOK) || '[]');
     let items = data.map(x => `<div class="card" onclick="window.parent.nav('${x.u}')"><a>${x.u}</a><small style="color:#00bcd4">★</small></div>`).join('');
