@@ -42,7 +42,7 @@ function getVavPage(url) {
   `;
 
   if (target === 'new-tab') {
-    // Check if a user custom wallpaper is saved
+    // Check if a user custom wallpaper (URL or Base64 upload) is saved
     const savedWallpaper = localStorage.getItem('mc_wallpaper') || '';
     
     // Generate custom CSS override if a wallpaper is active
@@ -53,6 +53,7 @@ function getVavPage(url) {
             background-size: cover; 
             background-position: center; 
             background-attachment: fixed; 
+            background-repeat: no-repeat;
           }
          </style>` 
       : '';
@@ -61,20 +62,37 @@ function getVavPage(url) {
       <div style="margin-top: 10vh;">
         <h1>VAV browser</h1>
         <p>beta 150.0</p>
-        <div style="max-width: 500px; margin: 0 auto;">
+        <div style="max-width: 520px; margin: 0 auto;">
           <input type="text" class="search-box" placeholder="Search or enter URL..." onkeydown="if(event.key==='Enter') window.parent.nav(this.value)">
-          <div class="btn-row">
+          <div class="btn-row" style="flex-wrap: wrap;">
             <button class="nav-btn" onclick="window.parent.nav('vav://bookmarks')">Bookmarks</button>
             <button class="nav-btn" onclick="window.parent.nav('vav://history')">History</button>
             <button class="nav-btn" onclick="window.parent.nav('vav://mall')">Mall</button>
             <button class="nav-btn" onclick="window.parent.nav('vav://flags')">Flags</button>
-            <button class="nav-btn" style="border-color: #00bcd4;" onclick="let url = prompt('Enter image URL for background (Leave blank to clear):', '${savedWallpaper}'); if(url !== null){ localStorage.setItem('mc_wallpaper', url.trim()); location.reload(); }">🖼️ Wallpaper</button>
+            
+            <input type="file" id="wpUpload" accept="image/*" style="display: none;" onchange="
+              const file = this.files[0];
+              if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                  try {
+                    localStorage.setItem('mc_wallpaper', e.target.result);
+                    location.reload();
+                  } catch(err) {
+                    alert('Image file is too large! Try a smaller image or a web link.');
+                  }
+                };
+                reader.readAsDataURL(file);
+              }
+            ">
+            
+            <button class="nav-btn" style="border-color: #00bcd4;" onclick="document.getElementById('wpUpload').click()">📁 Upload Wallpaper</button>
+            ${savedWallpaper ? `<button class="nav-btn" style="border-color: #ef5350; color: #ef5350;" onclick="localStorage.removeItem('mc_wallpaper'); location.reload();">✕ Clear</button>` : ''}
           </div>
         </div>
       </div>
     </body></html>`;
   }
-
   if (target === 'bookmarks') {
     const data = JSON.parse(localStorage.getItem(STORAGE.BOOK) || '[]');
     let items = data.map(x => `<div class="card" onclick="window.parent.nav('${x.u}')"><a>${x.u}</a><small style="color:#00bcd4">★</small></div>`).join('');
