@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Persistent Library System & Live Scanner</title>
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --accent: #3498db;
+            --success: #2ecc71;
+            --light: #ecf0f1;
+            --dark: #34495e;
+            --danger: #e74c3c;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f7fa;
+            margin: 0;
+            padding: 20px;
+            color: var(--dark);
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        header h1 { color: var(--primary); margin-bottom: 5px; }
+
+        /* Auth Screen */
+        .auth-container {
+            max-width: 450px;
+            margin: 40px auto;
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .auth-tabs { display: flex; margin-bottom: 20px; border-bottom: 2px solid var(--light); }
+        .tab { flex: 1; text-align: center; padding: 10px; cursor: pointer; font-weight: bold; color: #7f8c8d; }
+        .tab.active { color: var(--accent); border-bottom: 2px solid var(--accent); margin-bottom: -2px; }
+        .auth-form { display: none; }
+        .auth-form.active { display: block; }
+
+        /* Dashboard */
+        .dashboard { display: none; }
+        .main-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; }
+
+        @media (max-width: 768px) {
+            .main-layout { grid-template-columns: 1fr; }
+        }
+
+        .panel {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        }
+
+        .panel h2 { margin-top: 0; color: var(--primary); border-bottom: 2px solid var(--light); padding-bottom: 10px; }
+
+        /* Forms */
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: 600; }
+        .form-group input, .form-group select {
+            width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box;
+        }
+
+        button {
+            width: 100%; background-color: var(--accent); color: white; border: none; padding: 12px;
+            border-radius: 6px; font-size: 16px; cursor: pointer; font-weight: bold; transition: background 0.2s;
+        }
+        button:hover { background-color: #2980b9; }
+        
+        .logout-btn { background-color: var(--danger); width: auto; padding: 8px 15px; font-size: 14px; float: right; }
+        .logout-btn:hover { background-color: #c0392b; }
+
+        /* Card Styling */
+        .digital-card {
+            background: linear-gradient(135deg, #2c3e50, #1a252f); color: white; padding: 25px;
+            border-radius: 15px; box-shadow: 0 8px 16px rgba(0,0,0,0.15); min-height: 140px;
+            display: flex; flex-direction: column; justify-content: space-between;
+        }
+        .card-header { display: flex; justify-content: space-between; align-items: center; }
+        .card-type { font-size: 12px; background: var(--accent); padding: 4px 8px; border-radius: 4px; text-transform: uppercase; }
+        .user-name { font-size: 22px; font-weight: bold; margin: 15px 0 5px 0; }
+        .card-number { font-family: 'Courier New', monospace; color: #bdc3c7; }
+        .card-footer { display: flex; justify-content: space-between; font-size: 12px; color: #bdc3c7; margin-top: 15px; }
+
+        /* Camera Scanner Styles */
+        #qr-reader {
+            border: 2px solid var(--accent) !important;
+            border-radius: 8px;
+            overflow: hidden;
+            background: #fafafa;
+        }
+        /* Overriding library button styles slightly to clean them up */
+        #qr-reader button {
+            background-color: var(--primary); color: white; padding: 6px 12px; margin: 5px; font-size: 13px; width: auto;
+        }
+
+        /* Books Section */
+        .management-section { grid-column: 1 / -1; }
+        .book-list { list-style: none; padding: 0; }
+        .book-item {
+            display: flex; justify-content: space-between; background: var(--light);
+            padding: 12px; border-radius: 6px; margin-bottom: 10px; align-items: center;
+        }
+        .status-badge { background: var(--success); color: white; padding: 3px 8px; border-radius: 4px; font-size: 12px; }
+        
+        .clear-data-btn {
+            background-color: transparent; color: var(--danger); border: 1px solid var(--danger);
+            width: auto; padding: 5px 10px; font-size: 12px; margin-top: 20px;
+        }
+        .clear-data-btn:hover { background: var(--danger); color: white; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>City Central Library</h1>
+        <p>Live Camera Scanning & Persistent Storage Portal</p>
+    </header>
+
+    <div class="auth-container" id="authScreen">
+        <div class="auth-tabs">
+            <div class="tab active" id="tabSignIn" onclick="switchAuthTab('signin')">Sign In</div>
+            <div class="tab" id="tabCreate" onclick="switchAuthTab('create')">Create Card</div>
+        </div>
+
+        <div class="auth-form active" id="formSignInContainer">
+            <form id="signInForm">
+                <div class="form-group">
+                    <label for="loginCardNum">Library Card Number</label>
+                    <input type="text" id="loginCardNum" placeholder="LIB-XXXXXXXX" required>
+                    <small style="color:#7f8c8d;">Create a card first, or bypass testing using: <strong>LIB-99999999</strong></small>
+                </div>
+                <button type="submit">Access System</button>
+            </form>
+        </div>
+
+        <div class="auth-form" id="formCreateContainer">
+            <form id="createCardForm">
+                <div class="form-group">
+                    <label for="fullName">Full Name</label>
+                    <input type="text" id="fullName" placeholder="Jane Doe" required>
+                </div>
+                <div class="form-group">
+                    <label for="email">Email Address</label>
+                    <input type="email" id="email" placeholder="jane@example.com" required>
+                </div>
+                <div class="form-group">
+                    <label for="memberType">Membership Tier</label>
+                    <select id="memberType">
+                        <option value="Standard">Standard</option>
+                        <option value="Premium">Premium</option>
+                        <option value="Student">Student</option>
+                    </select>
+                </div>
+                <button type="submit">Register & Save Card</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="dashboard" id="dashboardScreen">
+        <div style="margin-bottom: 20px; overflow: hidden;">
+            <button class="logout-btn" onclick="logout()">Exit Dashboard</button>
+        </div>
+
+        <div class="main-layout">
+            <div class="panel">
+                <h2>Active Digital ID</h2>
+                <div class="digital-card">
+                    <div class="card-header">
+                        <span class="card-logo">📖 METRO LIBRARY</span>
+                        <span class="card-type" id="lblTier">Standard</span>
+                    </div>
+                    <div class="card-body">
+                        <p class="user-name" id="lblName">Jane Doe</p>
+                        <p class="card-number" id="lblCardNum">CARD # LIB-XXXXXXXX</p>
+                    </div>
+                    <div class="card-footer">
+                        <span>Issued: <span id="lblDate">--/--/----</span></span>
+                        <span>Memory Status: SAVED</span>
+                    </div>
+                </div>
+                <button class="clear-data-btn" onclick="factoryReset()">Clear All Browser Storage</button>
+            </div>
+
+            <div class="panel">
+                <h2>Live Camera Scanner</h2>
+                <p style="font-size: 13px; color: #7f8c8d; margin-top: -10px; margin-bottom: 15px;">
+                    Grant browser camera access. Hold up a real book barcode (or any QR/barcode) to scan.
+                </p>
+                <div id="qr-reader" style="width: 100%;"></div>
+            </div>
+
+            <div class="panel management-section">
+                <h3>Your Permanent Borrowed Collection</h3>
+                <ul class="book-list" id="borrowedList">
+                    <li id="emptyMsg" style="color: #7f8c8d; font-style: italic;">No books scanned into history yet.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // --- Local Hardware Memory (Syncs with LocalStorage) ---
+    let systemDatabase = JSON.parse(localStorage.getItem('lib_users')) || {
+        "LIB-99999999": { name: "System Administrator", tier: "Premium", date: "01/01/2026", books: [] }
+    };
+
+    // Global Pre-defined Directory for known items
+    const bookDirectory = {
+        "9780141439518": "Pride & Prejudice",
+        "9780451524935": "1984 (George Orwell)",
+        "9780316769488": "The Catcher in the Rye",
+        "9780743273565": "The Great Gatsby"
+    };
+
+    let activeSessionCardId = null;
+    let html5QrcodeScanner = null;
+
+    // --- Tab Switching Logic ---
+    function switchAuthTab(tabName) {
+        document.getElementById('tabSignIn').classList.remove('active');
+        document.getElementById('tabCreate').classList.remove('active');
+        document.getElementById('formSignInContainer').classList.remove('active');
+        document.getElementById('formCreateContainer').classList.remove('active');
+
+        if(tabName === 'signin') {
+            document.getElementById('tabSignIn').classList.add('active');
+            document.getElementById('formSignInContainer').classList.add('active');
+        } else {
+            document.getElementById('tabCreate').classList.add('active');
+            document.getElementById('formCreateContainer').classList.add('active');
+        }
+    }
+
+    // --- Action: Create Card & Save to Memory ---
+    document.getElementById('createCardForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const name = document.getElementById('fullName').value;
+        const tier = document.getElementById('memberType').value;
+        const generatedCardId = 'LIB-' + Math.floor(10000000 + Math.random() * 90000000);
+        const todayDate = new Date().toLocaleDateString();
+
+        // Commit structure data to memory object
+        systemDatabase[generatedCardId] = {
+            name: name,
+            tier: tier,
+            date: todayDate,
+            books: [] // Empty book array setup
+        };
+
+        // Push mutation down into native localstorage database string
+        localStorage.setItem('lib_users', JSON.stringify(systemDatabase));
+
+        alert(`Card Generated!\nYour System ID is: ${generatedCardId}`);
+        document.getElementById('createCardForm').reset();
+        document.getElementById('loginCardNum').value = generatedCardId;
+        switchAuthTab('signin');
+    });
+
+    // --- Action: User Sign-In Validation ---
+    document.getElementById('signInForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const inputCardId = document.getElementById('loginCardNum').value.trim();
+
+        if (systemDatabase[inputCardId]) {
+            activeSessionCardId = inputCardId;
+            
+            // Render active account UI
+            document.getElementById('lblName').innerText = systemDatabase[inputCardId].name;
+            document.getElementById('lblTier').innerText = systemDatabase[inputCardId].tier;
+            document.getElementById('lblCardNum').innerText = `CARD # ${inputCardId}`;
+            document.getElementById('lblDate').innerText = systemDatabase[inputCardId].date;
+
+            // Display UI panels
+            document.getElementById('authScreen').style.display = 'none';
+            document.getElementById('dashboardScreen').style.display = 'block';
+
+            // Load saved user history & trigger Camera Hardware
+            renderUserBooks();
+            initCameraScanner();
+        } else {
+            alert("Error: Card number not found. Make sure to generate one first.");
+        }
+    });
+
+    // --- Action: Active Camera Scanner Loop ---
+    function initCameraScanner() {
+        // Safe check to avoid multiple instances booting at once
+        if (html5QrcodeScanner) { html5QrcodeScanner.clear(); }
+
+        html5QrcodeScanner = new Html5QrcodeScanner(
+            "qr-reader", { 
+                fps: 15, 
+                qrbox: { width: 260, height: 160 },
+                rememberLastUsedCamera: true
+            }, false);
+        
+        html5QrcodeScanner.render(onScanSuccess);
+    }
+
+    // Triggered automatically when camera matches an active Barcode/QR format
+    function onScanSuccess(decodedText, decodedResult) {
+        // Audio beep feedback mimic using browser native synthesizer
+        try {
+            let audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            let osc = audioCtx.createOscillator();
+            osc.type = 'sine'; osc.frequency.setValueAtTime(880, audioCtx.currentTime); // High pitched beep
+            osc.connect(audioCtx.destination); osc.start(); osc.stop(audioCtx.currentTime + 0.12);
+        } catch(e) { console.log("Audio contexts blocked or unsupported"); }
+
+        // Match scanned barcode data against library catalog lookup table
+        let bookTitle = bookDirectory[decodedText] || `Unknown Item (Barcode ID: ${decodedText})`;
+        
+        const returnDeadline = new Date();
+        returnDeadline.setDate(returnDeadline.getDate() + 14);
+
+        // Update database arrays inside storage
+        const newBookRecord = {
+            title: bookTitle,
+            barcode: decodedText,
+            dueDate: returnDeadline.toLocaleDateString()
+        };
+
+        systemDatabase[activeSessionCardId].books.push(newBookRecord);
+        localStorage.setItem('lib_users', JSON.stringify(systemDatabase));
+
+        // Rerender dashboard history to showcase items saved in memory
+        renderUserBooks();
+        alert(`Scanned: "${bookTitle}" successfully saved to your system card account!`);
+    }
+
+    // --- Action: Print Stored Books History from LocalStorage ---
+    function renderUserBooks() {
+        const listContainer = document.getElementById('borrowedList');
+        listContainer.innerHTML = ""; // Clear existing rows
+
+        const userBooks = systemDatabase[activeSessionCardId].books || [];
+
+        if(userBooks.length === 0) {
+            listContainer.innerHTML = `<li id="emptyMsg" style="color: #7f8c8d; font-style: italic;">No books scanned into history yet.</li>`;
+            return;
+        }
+
+        userBooks.forEach(book => {
+            const row = document.createElement('li');
+            row.className = 'book-item';
+            row.innerHTML = `
+                <div>
+                    <strong>${book.title}</strong><br>
+                    <small style="color: #7f8c8d;">Data ID: ${book.barcode} | Return Due: ${book.dueDate}</small>
+                </div>
+                <span class="status-badge">Saved in Memory</span>
+            `;
+            listContainer.appendChild(row);
+        });
+    }
+
+    // --- Management Helper Actions ---
+    function logout() {
+        if(html5QrcodeScanner) {
+            html5QrcodeScanner.clear().catch(err => console.log("Scanner cleanup handling:", err));
+        }
+        activeSessionCardId = null;
+        document.getElementById('dashboardScreen').style.display = 'none';
+        document.getElementById('authScreen').style.display = 'block';
+        document.getElementById('signInForm').reset();
+    }
+
+    function factoryReset() {
+        if(confirm("Are you sure you want to completely erase the browser data for this app? All created cards and scan logs will be lost.")) {
+            localStorage.clear();
+            location.reload();
+        }
+    }
+</script>
+
+</body>
+</html>
