@@ -103,7 +103,6 @@
             overflow: hidden;
             background: #fafafa;
         }
-        /* Overriding library button styles slightly to clean them up */
         #qr-reader button {
             background-color: var(--primary); color: white; padding: 6px 12px; margin: 5px; font-size: 13px; width: auto;
         }
@@ -200,9 +199,15 @@
             <div class="panel">
                 <h2>Live Camera Scanner</h2>
                 <p style="font-size: 13px; color: #7f8c8d; margin-top: -10px; margin-bottom: 15px;">
-                    Grant browser camera access. Hold up a real book barcode (or any QR/barcode) to scan.
+                    Grant browser camera access. Hold up a real book barcode to scan, or type a barcode manually below if your camera is blocked.
                 </p>
+                
                 <div id="qr-reader" style="width: 100%;"></div>
+
+                <div style="margin-top: 15px; padding-top: 15px; border-top: 1px dashed #ccc; display: flex; gap: 10px;">
+                    <input type="text" id="manualBarcode" placeholder="Or type Barcode (e.g., 9780141439518)" style="flex: 2; padding: 10px; border: 1px solid #ccc; border-radius: 6px;">
+                    <button id="manualScanBtn" style="flex: 1; padding: 10px; font-size: 14px; background-color: var(--primary);">Submit Code</button>
+                </div>
             </div>
 
             <div class="panel management-section">
@@ -256,15 +261,13 @@
         const generatedCardId = 'LIB-' + Math.floor(10000000 + Math.random() * 90000000);
         const todayDate = new Date().toLocaleDateString();
 
-        // Commit structure data to memory object
         systemDatabase[generatedCardId] = {
             name: name,
             tier: tier,
             date: todayDate,
-            books: [] // Empty book array setup
+            books: []
         };
 
-        // Push mutation down into native localstorage database string
         localStorage.setItem('lib_users', JSON.stringify(systemDatabase));
 
         alert(`Card Generated!\nYour System ID is: ${generatedCardId}`);
@@ -281,17 +284,14 @@
         if (systemDatabase[inputCardId]) {
             activeSessionCardId = inputCardId;
             
-            // Render active account UI
             document.getElementById('lblName').innerText = systemDatabase[inputCardId].name;
             document.getElementById('lblTier').innerText = systemDatabase[inputCardId].tier;
             document.getElementById('lblCardNum').innerText = `CARD # ${inputCardId}`;
             document.getElementById('lblDate').innerText = systemDatabase[inputCardId].date;
 
-            // Display UI panels
             document.getElementById('authScreen').style.display = 'none';
             document.getElementById('dashboardScreen').style.display = 'block';
 
-            // Load saved user history & trigger Camera Hardware
             renderUserBooks();
             initCameraScanner();
         } else {
@@ -301,7 +301,6 @@
 
     // --- Action: Active Camera Scanner Loop ---
     function initCameraScanner() {
-        // Safe check to avoid multiple instances booting at once
         if (html5QrcodeScanner) { html5QrcodeScanner.clear(); }
 
         html5QrcodeScanner = new Html5QrcodeScanner(
@@ -311,26 +310,26 @@
                 rememberLastUsedCamera: true
             }, false);
         
-        html5QrcodeScanner.render(onScanSuccess);
+        html5QrcodeScanner.render(onScanSuccess, onScanFailure);
     }
 
-    // Triggered automatically when camera matches an active Barcode/QR format
+    function onScanFailure(error) {
+        // Quietly handle frame-by-frame scanner mismatching to prevent console noise
+    }
+
     function onScanSuccess(decodedText, decodedResult) {
-        // Audio beep feedback mimic using browser native synthesizer
+        // Play quick browser audio notification beep
         try {
             let audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             let osc = audioCtx.createOscillator();
-            osc.type = 'sine'; osc.frequency.setValueAtTime(880, audioCtx.currentTime); // High pitched beep
+            osc.type = 'sine'; osc.frequency.setValueAtTime(880, audioCtx.currentTime);
             osc.connect(audioCtx.destination); osc.start(); osc.stop(audioCtx.currentTime + 0.12);
-        } catch(e) { console.log("Audio contexts blocked or unsupported"); }
+        } catch(e) {}
 
-        // Match scanned barcode data against library catalog lookup table
-        let bookTitle = bookDirectory[decodedText] || `Unknown Item (Barcode ID: ${decodedText})`;
-        
+        let bookTitle = bookDirectory[decodedText] || `Unknown Item (ID: ${decodedText})`;
         const returnDeadline = new Date();
         returnDeadline.setDate(returnDeadline.getDate() + 14);
 
-        // Update database arrays inside storage
         const newBookRecord = {
             title: bookTitle,
             barcode: decodedText,
@@ -340,15 +339,28 @@
         systemDatabase[activeSessionCardId].books.push(newBookRecord);
         localStorage.setItem('lib_users', JSON.stringify(systemDatabase));
 
-        // Rerender dashboard history to showcase items saved in memory
         renderUserBooks();
-        alert(`Scanned: "${bookTitle}" successfully saved to your system card account!`);
+        alert(`Scanned: "${bookTitle}" added to your account!`);
     }
 
-    // --- Action: Print Stored Books History from LocalStorage ---
+    // --- Action: Manual Fallback Scanner Click Handler ---
+    document.getElementById('manualScanBtn').addEventListener('click', function() {
+        const inputField = document.getElementById('manualBarcode');
+        const typedCode = inputField.value.trim();
+        
+        if (typedCode === "") {
+            alert("Please enter a barcode number first!");
+            return;
+        }
+        
+        onScanSuccess(typedCode, null);
+        inputField.value = ""; 
+    });
+
+    // --- Action: Print Stored Books & Generate Dynamic Return Buttons ---
     function renderUserBooks() {
         const listContainer = document.getElementById('borrowedList');
-        listContainer.innerHTML = ""; // Clear existing rows
+        listContainer.innerHTML = ""; 
 
         const userBooks = systemDatabase[activeSessionCardId].books || [];
 
@@ -357,7 +369,7 @@
             return;
         }
 
-        userBooks.forEach(book => {
+        userBooks.forEach((book, index) => {
             const row = document.createElement('li');
             row.className = 'book-item';
             row.innerHTML = `
@@ -365,16 +377,35 @@
                     <strong>${book.title}</strong><br>
                     <small style="color: #7f8c8d;">Data ID: ${book.barcode} | Return Due: ${book.dueDate}</small>
                 </div>
-                <span class="status-badge">Saved in Memory</span>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <span class="status-badge">Checked Out</span>
+                    <button onclick="returnBook(${index})" style="background-color: var(--danger); width: auto; padding: 6px 12px; font-size: 12px; margin: 0;">Return Book</button>
+                </div>
             `;
             listContainer.appendChild(row);
         });
     }
 
+    // --- Feature New Action: Return Book Logic ---
+    function returnBook(index) {
+        const targetBookTitle = systemDatabase[activeSessionCardId].books[index].title;
+        
+        if(confirm(`Confirm checkout processing: Would you like to return "${targetBookTitle}"?`)) {
+            // Cut item from array using index positioning mutations
+            systemDatabase[activeSessionCardId].books.splice(index, 1);
+            
+            // Sync mutated state back to global system localStorage
+            localStorage.setItem('lib_users', JSON.stringify(systemDatabase));
+            
+            // Redraw table interface state 
+            renderUserBooks();
+        }
+    }
+
     // --- Management Helper Actions ---
     function logout() {
         if(html5QrcodeScanner) {
-            html5QrcodeScanner.clear().catch(err => console.log("Scanner cleanup handling:", err));
+            html5QrcodeScanner.clear().catch(err => console.log(err));
         }
         activeSessionCardId = null;
         document.getElementById('dashboardScreen').style.display = 'none';
@@ -383,7 +414,7 @@
     }
 
     function factoryReset() {
-        if(confirm("Are you sure you want to completely erase the browser data for this app? All created cards and scan logs will be lost.")) {
+        if(confirm("Completely erase browser data for this library app? All created cards and logs will be lost.")) {
             localStorage.clear();
             location.reload();
         }
