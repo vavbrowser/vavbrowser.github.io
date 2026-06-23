@@ -515,11 +515,11 @@ function initOSCore() {
   shelf.className = 'os-shelf';
   shelf.innerHTML = `
     <div style="display:flex; align-items:center; gap:10px;">
-      <div class="shelf-item material-symbols-outlined" id="osLauncherBtn" style="background:rgba(255,255,255,0.12);">apps</div>
-      <div class="shelf-item material-symbols-outlined active-dot" id="shelf-btn-browser" onclick="window.toggleWindowMin('browser')">language</div>
-      <div class="shelf-item material-symbols-outlined" id="shelf-btn-notes" onclick="window.toggleWindowMin('notes')" style="display:none;">description</div>
-      <div class="shelf-item material-symbols-outlined" id="shelf-btn-calc" onclick="window.toggleWindowMin('calc')" style="display:none;">calculate</div>
-      <div class="shelf-item material-symbols-outlined" id="shelf-btn-monitor" onclick="window.toggleWindowMin('monitor')" style="display:none;">monitoring</div>
+      <div class="shelf-item material-symbols-outlined" id="osLauncherBtn" style="background:rgba(255,255,255,0.12);">☰</div>
+      <div class="shelf-item material-symbols-outlined active-dot" id="shelf-btn-browser" onclick="window.toggleWindowMin('browser')">🌐</div>
+      <div class="shelf-item material-symbols-outlined" id="shelf-btn-notes" onclick="window.toggleWindowMin('notes')" style="display:none;">🗒</div>
+      <div class="shelf-item material-symbols-outlined" id="shelf-btn-calc" onclick="window.toggleWindowMin('calc')" style="display:none;">📱</div>
+      <div class="shelf-item material-symbols-outlined" id="shelf-btn-monitor" onclick="window.toggleWindowMin('monitor')" style="display:none;">🧪</div>
     </div>
     <div class="os-tray" id="osTrayBtn">
       <span class="material-symbols-outlined" style="font-size:16px;">wifi</span>
@@ -536,23 +536,23 @@ function initOSCore() {
     <h3 style="margin-top:0; font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:14px;">Launcher Applications</h3>
     <div class="launcher-grid">
       <div class="launcher-app" onclick="window.launchOSApp('browser')">
-        <span class="material-symbols-outlined" style="color:var(--accent);">language</span>
+        <span class="material-symbols-outlined" style="color:var(--accent);">⬤</span>
         <div>Browser</div>
       </div>
       <div class="launcher-app" onclick="window.launchOSApp('notes')">
-        <span class="material-symbols-outlined" style="color:#ffb74d;">description</span>
+        <span class="material-symbols-outlined" style="color:#ffb74d;">🗒</span>
         <div>Notes Notepad</div>
       </div>
       <div class="launcher-app" onclick="window.launchOSApp('calc')">
-        <span class="material-symbols-outlined" style="color:#4db6ac;">calculate</span>
+        <span class="material-symbols-outlined" style="color:#4db6ac;">📱</span>
         <div>Calculator</div>
       </div>
       <div class="launcher-app" onclick="window.launchOSApp('monitor')">
-        <span class="material-symbols-outlined" style="color:#81c784;">monitoring</span>
+        <span class="material-symbols-outlined" style="color:#81c784;">🧪</span>
         <div>Diagnostics</div>
       </div>
       <div class="launcher-app" onclick="window.launchOSApp('settings')">
-        <span class="material-symbols-outlined" style="color:#e0e0e0;">settings</span>
+        <span class="material-symbols-outlined" style="color:#e0e0e0;">📠</span>
         <div>Settings</div>
       </div>
     </div>
