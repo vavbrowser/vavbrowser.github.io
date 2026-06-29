@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>New Tab</title>
+    <title>New tab</title>
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -106,11 +106,10 @@
             color: #8ab4f8;
         }
 
-        /* Dropdown Base Layout Container */
+        /* Dropdowns Base Style */
         .extensions-mgmt-container, .more-mgmt-container {
             position: relative;
         }
-        
         .extensions-menu, .more-menu {
             display: none;
             position: absolute;
@@ -126,12 +125,9 @@
         }
         .extensions-menu { width: 320px; }
         .more-menu { width: 200px; padding: 6px 0; }
-        
-        .extensions-menu.show, .more-menu.show {
-            display: block;
-        }
+        .extensions-menu.show, .more-menu.show { display: block; }
 
-        /* Extension Item Rows */
+        /* Extension Drops Rows */
         .extension-list-item {
             display: flex;
             justify-content: space-between;
@@ -140,136 +136,148 @@
             border-bottom: 1px solid #3c4043;
             font-size: 13px;
         }
-        
-        /* Pin & Delete Utility Buttons */
-        .action-cluster {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
+        .action-cluster { display: flex; align-items: center; gap: 8px; }
         .pin-btn, .delete-ext-btn {
-            background: none;
-            border: none;
-            color: #9aa0a6;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            transition: color 0.15s;
+            background: none; border: none; color: #9aa0a6; cursor: pointer; display: flex; align-items: center;
         }
-        .pin-btn:hover { color: #8ab4f8; }
-        .pin-btn.active { 
-            color: #8ab4f8;
-            font-fill: 1; /* Request icon fill state */
-        }
+        .pin-btn:hover, .pin-btn.active { color: #8ab4f8; }
         .delete-ext-btn:hover { color: #ea4335; }
-        
-        .pin-btn .material-symbols-outlined, 
-        .delete-ext-btn .material-symbols-outlined { 
-            font-size: 18px; 
-        }
+        .pin-btn .material-symbols-outlined, .delete-ext-btn .material-symbols-outlined { font-size: 18px; }
 
-        .upload-section {
-            padding-top: 12px;
-            text-align: center;
-        }
+        .upload-section { padding-top: 12px; text-align: center; }
         .upload-label {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            background-color: #3c4043;
-            color: #8ab4f8;
-            padding: 6px 12px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 12px;
-            font-weight: 500;
+            display: inline-flex; align-items: center; gap: 6px; background-color: #3c4043; color: #8ab4f8;
+            padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 500;
         }
-        .upload-label:hover { background-color: #4f5357; }
 
-        /* 3-Dots Menu Options Styling */
+        /* 3-Dots Items */
         .more-item {
+            display: flex; align-items: center; gap: 10px; padding: 10px 14px; font-size: 13px; cursor: pointer; color: #e8eaed;
+        }
+        .more-item:hover { background-color: #3c4043; }
+        .more-item .material-symbols-outlined { font-size: 18px; color: #9aa0a6; }
+
+        /* FLOATING POPUP WINDOW */
+        .extension-popup-window {
+            display: none; position: absolute; right: 12px; top: 54px; width: 320px; height: 420px;
+            background-color: #ffffff; border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+            border: 1px solid #434346; z-index: 100; overflow: hidden;
+        }
+        .extension-popup-window.show { display: block; }
+
+        /* CORE WORKSPACE PANELS */
+        .workspace {
+            display: flex; flex-grow: 1; width: 100%; height: 100%; position: relative;
+        }
+        .browser-content { flex-grow: 1; height: 100%; border: none; background-color: #202124; }
+        .browser-content.hidden { display: none; }
+
+        /* DRAGGABLE RESIZER */
+        .sidebar-resizer { display: none; width: 6px; height: 100%; background-color: #3c4043; cursor: col-resize; z-index: 6; }
+        .sidebar-resizer:hover, .sidebar-resizer.dragging { background-color: #8ab4f8; }
+
+        /* SIDEBAR PANEL */
+        .sidebar-panel {
+            display: none; width: 320px; min-width: 200px; max-width: 70vw; height: 100%;
+            background-color: #ffffff; border-left: 1px solid #3c4043; box-shadow: -4px 0 16px rgba(0,0,0,0.3); z-index: 5;
+        }
+        .popup-iframe, .sidebar-iframe { width: 100%; height: 100%; border: none; }
+
+        /* =========================================
+           NEW DEDICATED SETTINGS PAGE COMPONENT
+           ========================================= */
+        .settings-page {
+            display: none; /* Controlled dynamically via Tab state */
+            flex-grow: 1;
+            height: 100%;
+            background-color: #f1f3f4;
+            color: #202124;
+            overflow-y: auto;
+        }
+        .settings-page.active {
+            display: flex;
+        }
+        
+        /* Settings Layout Columns */
+        .settings-sidebar {
+            width: 250px;
+            background-color: #ffffff;
+            border-right: 1px solid #ch3c4043;
+            padding: 20px 0;
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid #dadce0;
+        }
+        .settings-nav-item {
             display: flex;
             align-items: center;
-            gap: 10px;
-            padding: 10px 14px;
-            font-size: 13px;
+            gap: 12px;
+            padding: 12px 24px;
+            font-size: 14px;
+            font-weight: 500;
+            color: #5f6368;
             cursor: pointer;
-            color: #e8eaed;
-            transition: background 0.15s;
+            border-radius: 0 100px 100px 0;
+            margin-right: 12px;
         }
-        .more-item:hover {
-            background-color: #3c4043;
-        }
-        .more-item .material-symbols-outlined {
-            font-size: 18px;
-            color: #9aa0a6;
-        }
+        .settings-nav-item:hover { background-color: #f1f3f4; color: #202124; }
+        .settings-nav-item.active { background-color: #e8f0fe; color: #1a73e8; }
+        .settings-nav-item .material-symbols-outlined { font-size: 20px; }
 
-        /* FLOATING POPUP CONTAINER */
-        .extension-popup-window {
-            display: none;
-            position: absolute;
-            right: 12px;
-            top: 54px;
-            width: 320px;
-            height: 420px;
-            background-color: #ffffff;
-            border-radius: 8px;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.6);
-            border: 1px solid #434346;
-            z-index: 100;
-            overflow: hidden;
+        .settings-body {
+            flex-grow: 1;
+            padding: 40px 60px;
+            max-width: 800px;
         }
-        .extension-popup-window.show {
+        .settings-section {
+            display: none;
+        }
+        .settings-section.active {
             display: block;
         }
-
-        /* MAIN WORKSPACE SPLIT */
-        .workspace {
-            display: flex;
-            flex-grow: 1;
-            width: 100%;
-            height: 100%;
-            position: relative;
-        }
-        .browser-content {
-            flex-grow: 1;
-            height: 100%;
-            border: none;
-            background-color: #202124;
-        }
-
-        /* DRAGGABLE RESIZER BAR */
-        .sidebar-resizer {
-            display: none;
-            width: 6px;
-            height: 100%;
-            background-color: #3c4043;
-            cursor: col-resize;
-            z-index: 6;
-        }
-        .sidebar-resizer:hover, .sidebar-resizer.dragging {
-            background-color: #8ab4f8;
-        }
-
-        /* PANEL SIDEBAR */
-        .sidebar-panel {
-            display: none; 
-            width: 320px; 
-            min-width: 200px;
-            max-width: 70vw;
-            height: 100%;
-            background-color: #ffffff;
-            border-left: 1px solid #3c4043;
-            box-shadow: -4px 0 16px rgba(0,0,0,0.3);
-            z-index: 5;
-        }
         
-        .popup-iframe, .sidebar-iframe {
-            width: 100%;
-            height: 100%;
-            border: none;
+        h2 { font-size: 22px; font-weight: 400; margin-bottom: 24px; color: #202124; }
+        .settings-card {
+            background: #ffffff;
+            border-radius: 8px;
+            border: 1px solid #dadce0;
+            padding: 16px 24px;
+            margin-bottom: 16px;
         }
+        .settings-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 14px 0;
+        }
+        .settings-row:not(:last-child) { border-bottom: 1px solid #f1f3f4; }
+        
+        .settings-info h4 { font-size: 14px; font-weight: 500; color: #3c4043; margin-bottom: 4px;}
+        .settings-info p { font-size: 12px; color: #5f6368; }
+        
+        select, input[type="text"].settings-input {
+            padding: 6px 12px;
+            border: 1px solid #dadce0;
+            border-radius: 4px;
+            font-size: 13px;
+            outline: none;
+            background-color: #fff;
+        }
+        select:focus, .settings-input:focus { border-color: #1a73e8; }
+        
+        .settings-btn {
+            background-color: #1a73e8;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+        }
+        .settings-btn:hover { background-color: #1557b0; }
+        .settings-btn.danger { background-color: #d93025; }
+        .settings-btn.danger:hover { background-color: #b21f14; }
     </style>
 </head>
 <body>
@@ -282,7 +290,7 @@
         </div>
         
         <div class="address-bar-container">
-            <span class="site-icon"><span class="material-symbols-outlined">lock</span></span>
+            <span class="site-icon" id="barStatusIcon"><span class="material-symbols-outlined">lock</span></span>
             <input type="text" class="address-input" id="urlInput" value="https://www.google.com" onkeydown="handleNavigation(event)">
         </div>
 
@@ -292,11 +300,9 @@
             <button class="btn" id="puzzleBtn" title="Extensions" onclick="toggleExtensionsMenu()">
                 <span class="material-symbols-outlined">extension</span>
             </button>
-            
             <div class="extensions-menu" id="extMenu">
                 <h4 style="margin-bottom: 8px; font-size: 14px; font-weight: 500; border-bottom: 1px solid #3c4043; padding-bottom: 6px;">Manage Extensions</h4>
                 <div id="installedList"></div>
-                
                 <div class="upload-section">
                     <label for="extUpload" class="upload-label">
                         <span class="material-symbols-outlined" style="font-size: 16px;">upload_file</span>
@@ -311,15 +317,14 @@
             <button class="btn" id="moreBtn" title="Customize and control browser" onclick="toggleMoreMenu()">
                 <span class="material-symbols-outlined">more_vert</span>
             </button>
-            
             <div class="more-menu" id="moreMenu">
-                <div class="more-item" onclick="alert('Mock Settings Panel:\n\n• Browser Engine: MockChrome v2026.1\n• Security: Sandbox Active\n• Storage Capacity: Unlimited Local HTML Blobs')">
+                <div class="more-item" onclick="openSettingsPage('appearance')">
                     <span class="material-symbols-outlined">settings</span>
                     <span>Settings</span>
                 </div>
-                <div class="more-item" onclick="alert('History is pristine. No footprints left behind!')">
-                    <span class="material-symbols-outlined">history</span>
-                    <span>History</span>
+                <div class="more-item" onclick="openSettingsPage('extensions')">
+                    <span class="material-symbols-outlined">extension</span>
+                    <span>Manage Extensions</span>
                 </div>
                 <hr style="border: none; border-bottom: 1px solid #3c4043; margin: 4px 0;">
                 <div class="more-item" style="color: #ff6b6b;" onclick="resetBrowserData()">
@@ -337,8 +342,65 @@
     <div class="workspace">
         <iframe id="browserFrame" class="browser-content" src="https://www.google.com/webhp?igu=1"></iframe>
         
+        <div class="settings-page" id="settingsPage">
+            <div class="settings-sidebar">
+                <div class="settings-nav-item active" id="nav-appearance" onclick="switchSettingsSection('appearance')">
+                    <span class="material-symbols-outlined">palette</span>
+                    <span>Appearance</span>
+                </div>
+                <div class="settings-nav-item" id="nav-extensions" onclick="switchSettingsSection('extensions')">
+                    <span class="material-symbols-outlined">extension_setup</span>
+                    <span>Extensions</span>
+                </div>
+                <div class="settings-nav-item" id="nav-about" onclick="switchSettingsSection('about')">
+                    <span class="material-symbols-outlined">info</span>
+                    <span>About Browser</span>
+                </div>
+            </div>
+            <div class="settings-body">
+                <div class="settings-section active" id="sec-appearance">
+                    <h2>Appearance & Navigation</h2>
+                    <div class="settings-card">
+                        <div class="settings-row">
+                            <div class="settings-info">
+                                <h4>Default Homepage URL</h4>
+                                <p>Set the fallback launch domain address used when booting or resetting.</p>
+                            </div>
+                            <input type="text" class="settings-input" id="settingHomepage" value="https://www.google.com" onchange="saveGeneralSettings()">
+                        </div>
+                        <div class="settings-row">
+                            <div class="settings-info">
+                                <h4>Default Sidebar Sizing Profile</h4>
+                                <p>Select standard layout window parameters for side panel attachments.</p>
+                            </div>
+                            <select id="settingSidebarSize" onchange="applySidebarSizePreset()">
+                                <option value="260">Narrow (260px)</option>
+                                <option value="320" selected>Standard (320px)</option>
+                                <option value="450">Wide (450px)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="settings-section" id="sec-extensions">
+                    <h2>Installed System Extension Modules</h2>
+                    <p style="font-size: 13px; color: #5f6368; margin-bottom: 16px;">Detailed structural inspection index for developer components injected into this sandbox container layout instance.</p>
+                    <div id="settingsExtensionsContainer"></div>
+                </div>
+
+                <div class="settings-section" id="sec-about">
+                    <h2>About MockChrome OS</h2>
+                    <div class="settings-card" style="text-align: center; padding: 30px 0;">
+                        <span class="material-symbols-outlined" style="font-size: 64px; color: #1a73e8; margin-bottom: 12px;">split_scene</span>
+                        <h3 style="font-size: 18px; font-weight: 500; margin-bottom: 6px;">Mock Browser Runtime Engine</h3>
+                        <p style="font-size: 13px; color: #5f6368; margin-bottom: 24px;">Version 2026.4.12 (Official Build) (64-bit)</p>
+                        <button class="settings-btn danger" onclick="resetBrowserData()">Reset All Profiles & Application Cache</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div class="sidebar-resizer" id="sidebarResizer"></div>
-        
         <div class="sidebar-panel" id="sidebarPanel">
             <iframe id="sidebarIframe" class="sidebar-iframe" src="about:blank"></iframe>
         </div>
@@ -347,14 +409,19 @@
     <script>
         const iframe = document.getElementById('browserFrame');
         const urlInput = document.getElementById('urlInput');
+        const barStatusIcon = document.getElementById('barStatusIcon');
         
-        // Menus
+        // Settings Layout Controls
+        const settingsPage = document.getElementById('settingsPage');
+        const settingHomepage = document.getElementById('settingHomepage');
+        const settingSidebarSize = document.getElementById('settingSidebarSize');
+        const settingsExtensionsContainer = document.getElementById('settingsExtensionsContainer');
+
+        // Dropdowns & Windows
         const extMenu = document.getElementById('extMenu');
         const moreMenu = document.getElementById('moreMenu');
         const shortcutBar = document.getElementById('shortcutBar');
         const installedList = document.getElementById('installedList');
-        
-        // Panels & Resizers
         const popupWindow = document.getElementById('popupWindow');
         const popupIframe = document.getElementById('popupIframe');
         const sidebarPanel = document.getElementById('sidebarPanel');
@@ -364,11 +431,20 @@
         let extensionsDatabase = {};
         let isResizing = false;
 
-        // --- Initialization on Boot ---
+        // --- Core Boot Initialization ---
         window.addEventListener('DOMContentLoaded', () => {
+            // Restore config variables
+            const savedHomepage = localStorage.getItem('chrome_homepage');
+            if (savedHomepage) {
+                settingHomepage.value = savedHomepage;
+                iframe.src = savedHomepage;
+                urlInput.value = savedHomepage;
+            }
+
             const savedWidth = localStorage.getItem('chrome_sidebar_width');
             if (savedWidth) sidebarPanel.style.width = savedWidth + 'px';
 
+            // Reconstruct Blobs from database
             const savedExtensions = localStorage.getItem('chrome_saved_extensions');
             if (savedExtensions) {
                 const parsedData = JSON.parse(savedExtensions);
@@ -382,7 +458,7 @@
                         rawHtml: ext.rawHtml,
                         url: blobURL,
                         displayType: ext.displayType,
-                        pinned: ext.pinned !== undefined ? ext.pinned : true // Default to true if missing
+                        pinned: ext.pinned !== undefined ? ext.pinned : true
                     };
                 });
                 renderExtensionsUI();
@@ -414,9 +490,10 @@
             }
         });
 
-        // --- Menu Command Hooks ---
+        // --- Tab Control Navigation Engine ---
         function handleNavigation(event) {
             if (event.key === 'Enter') {
+                closeSettingsPage(); // If they type a URL, slide away the settings menu panel view
                 let url = urlInput.value.trim();
                 if (!url.startsWith('http://') && !url.startsWith('https://') && !url.endsWith('.html')) {
                     url = 'https://' + url;
@@ -426,28 +503,63 @@
             }
         }
 
-        function reloadPage() { iframe.src = iframe.src; }
-        
-        function toggleExtensionsMenu() { 
-            extMenu.classList.toggle('show'); 
-            moreMenu.classList.remove('show');
-            popupWindow.classList.remove('show'); 
+        function reloadPage() { 
+            if (settingsPage.classList.contains('active')) {
+                location.reload();
+            } else {
+                iframe.src = iframe.src; 
+            }
         }
 
-        function toggleMoreMenu() {
-            moreMenu.classList.toggle('show');
-            extMenu.classList.remove('show');
-            popupWindow.classList.remove('show');
+        // Opens core Settings Dashboard View Tab
+        function openSettingsPage(targetSection = 'appearance') {
+            settingsPage.classList.add('active');
+            iframe.classList.add('hidden'); // Hide active Web Window context
+            
+            urlInput.value = "chrome://settings";
+            barStatusIcon.innerHTML = `<span class="material-symbols-outlined" style="color:#1a73e8;">settings</span>`;
+            
+            moreMenu.classList.remove('show');
+            switchSettingsSection(targetSection);
         }
+
+        function closeSettingsPage() {
+            settingsPage.classList.remove('active');
+            iframe.classList.remove('hidden');
+            barStatusIcon.innerHTML = `<span class="material-symbols-outlined">lock</span>`;
+        }
+
+        function switchSettingsSection(sectionId) {
+            document.querySelectorAll('.settings-nav-item').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.settings-section').forEach(el => el.classList.remove('active'));
+            
+            document.getElementById(`nav-${sectionId}`).classList.add('active');
+            document.getElementById(`sec-${sectionId}`).classList.add('active');
+
+            if (sectionId === 'extensions') renderDetailedSettingsExtensionsIndex();
+        }
+
+        function saveGeneralSettings() {
+            localStorage.setItem('chrome_homepage', settingHomepage.value);
+        }
+
+        function applySidebarSizePreset() {
+            const size = settingSidebarSize.value;
+            sidebarPanel.style.width = size + 'px';
+            localStorage.setItem('chrome_sidebar_width', size);
+        }
+
+        function toggleExtensionsMenu() { extMenu.classList.toggle('show'); moreMenu.classList.remove('show'); popupWindow.classList.remove('show'); }
+        function toggleMoreMenu() { moreMenu.classList.toggle('show'); extMenu.classList.remove('show'); popupWindow.classList.remove('show'); }
 
         function resetBrowserData() {
-            if (confirm("Are you sure you want to restore factory default settings?\n\nThis uninstalls all custom extensions and resets layout sizing configurations permanently.")) {
+            if (confirm("Reset application variables back to defaults?\n\nThis removes homepage choices, layout properties, and all installed custom extension scripts.")) {
                 localStorage.clear();
                 location.reload();
             }
         }
 
-        // --- Extension Operations Core ---
+        // --- Extensions Processing Core ---
         function handleExtensionUpload(event) {
             const file = event.target.files[0];
             if (!file) return;
@@ -458,7 +570,7 @@
                 const extensionId = 'ext_' + Date.now();
                 const extensionName = file.name.replace('.html', '');
 
-                const loadAsSidebar = confirm(`Would you like to open "${extensionName}" inside a split-screen SIDEBAR?\n\n(Click 'Cancel' to load it as a standard top-right Popup instead)`);
+                const loadAsSidebar = confirm(`Open "${extensionName}" inside a split-screen SIDEBAR?\n\n(Cancel loads it as a floating Popup instead)`);
 
                 const blob = new Blob([fileRawContent], { type: 'text/html' });
                 const blobURL = URL.createObjectURL(blob);
@@ -468,11 +580,12 @@
                     rawHtml: fileRawContent,
                     url: blobURL,
                     displayType: loadAsSidebar ? 'sidebar' : 'popup',
-                    pinned: true // New installs are automatically pinned to the bar
+                    pinned: true
                 };
 
                 saveExtensionsToStorage();
                 renderExtensionsUI();
+                if (settingsPage.classList.contains('active')) renderDetailedSettingsExtensionsIndex();
             };
             reader.readAsText(file);
             event.target.value = ''; 
@@ -482,12 +595,7 @@
             const exportableData = {};
             Object.keys(extensionsDatabase).forEach(id => {
                 const ext = extensionsDatabase[id];
-                exportableData[id] = {
-                    name: ext.name,
-                    rawHtml: ext.rawHtml,
-                    displayType: ext.displayType,
-                    pinned: ext.pinned
-                };
+                exportableData[id] = { name: ext.name, rawHtml: ext.rawHtml, displayType: ext.displayType, pinned: ext.pinned };
             });
             localStorage.setItem('chrome_saved_extensions', JSON.stringify(exportableData));
         }
@@ -507,66 +615,85 @@
             popupWindow.classList.remove('show');
             
             renderExtensionsUI();
+            if (settingsPage.classList.contains('active')) renderDetailedSettingsExtensionsIndex();
         }
 
-        // --- Render UI Layout Elements ---
+        // --- Render UI Arrays ---
         function renderExtensionsUI() {
             installedList.innerHTML = '';
             shortcutBar.innerHTML = '';
             
             const keys = Object.keys(extensionsDatabase);
             if(keys.length === 0) {
-                installedList.innerHTML = '<p style="font-size: 12px; color: #9aa0a6; text-align: center; padding: 10px 0;">No custom extensions uploaded yet.</p>';
+                installedList.innerHTML = '<p style="font-size: 12px; color: #9aa0a6; text-align: center; padding: 10px 0;">No extensions installed.</p>';
                 return;
             }
 
             keys.forEach(id => {
                 const ext = extensionsDatabase[id];
-
-                // 1. Build Item Entry inside extension dropdown manager view
                 const item = document.createElement('div');
                 item.className = 'extension-list-item';
                 item.innerHTML = `
-                    <div style="cursor:pointer;" onclick="triggerExtensionDisplay('${id}')" title="Launch Extension">
-                        <span style="font-size:14px; margin-right:4px;">🧩</span>
-                        <strong>${ext.name}</strong> 
-                        <span style="color:#9aa0a6; font-size:10px; margin-left:2px;">(${ext.displayType})</span>
+                    <div style="cursor:pointer;" onclick="triggerExtensionDisplay('${id}')">
+                        <span>🧩</span> <strong>${ext.name}</strong> <span style="font-size:10px; color:#9aa0a6;">(${ext.displayType})</span>
                     </div>
                     <div class="action-cluster">
-                        <button class="pin-btn ${ext.pinned ? 'active' : ''}" title="${ext.pinned ? 'Unpin from toolbar' : 'Pin to toolbar'}" onclick="togglePin('${id}')">
+                        <button class="pin-btn ${ext.pinned ? 'active' : ''}" onclick="togglePin('${id}')">
                             <span class="material-symbols-outlined" style="${ext.pinned ? 'font-variation-settings: \'FILL\' 1;' : ''}">push_pin</span>
                         </button>
-                        <button class="delete-ext-btn" title="Uninstall Extension" onclick="deleteExtension('${id}')">
-                            <span class="material-symbols-outlined">delete</span>
-                        </button>
+                        <button class="delete-ext-btn" onclick="deleteExtension('${id}')"><span class="material-symbols-outlined">delete</span></button>
                     </div>
                 `;
                 installedList.appendChild(item);
 
-                // 2. Build Shortcut Icon in Toolbar, only if pinned flag state is true
                 if (ext.pinned) {
                     const shortcut = document.createElement('button');
                     shortcut.className = 'btn ext-shortcut-btn';
                     shortcut.title = ext.name;
-                    
-                    const iconName = ext.displayType === 'sidebar' ? 'dock_to_left' : 'deployed_code';
-                    shortcut.innerHTML = `<span class="material-symbols-outlined">${iconName}</span>`;
-                    
-                    shortcut.onclick = (e) => {
-                        e.stopPropagation(); 
-                        triggerExtensionDisplay(id);
-                    };
+                    shortcut.innerHTML = `<span class="material-symbols-outlined">${ext.displayType === 'sidebar' ? 'dock_to_left' : 'deployed_code'}</span>`;
+                    shortcut.onclick = (e) => { e.stopPropagation(); triggerExtensionDisplay(id); };
                     shortcutBar.appendChild(shortcut);
                 }
             });
         }
 
+        // NEW: Generates inside the dedicated Settings UI Panel View
+        function renderDetailedSettingsExtensionsIndex() {
+            settingsExtensionsContainer.innerHTML = '';
+            const keys = Object.keys(extensionsDatabase);
+
+            if (keys.length === 0) {
+                settingsExtensionsContainer.innerHTML = `
+                    <div class="settings-card" style="text-align:center; padding:30px; color:#5f6368; font-size:14px;">
+                        No extensions currently deployed. Open the top bar puzzle menu to load .html modules.
+                    </div>`;
+                return;
+            }
+
+            keys.forEach(id => {
+                const ext = extensionsDatabase[id];
+                const card = document.createElement('div');
+                card.className = 'settings-card';
+                card.innerHTML = `
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                        <div>
+                            <h3 style="font-size:15px; font-weight:500; margin-bottom:4px; display:flex; align-items:center; gap:6px;">🧩 ${ext.name}</h3>
+                            <p style="font-size:12px; color:#5f6368; margin-bottom:8px;">ID Parameter Reference: <code>${id}</code></p>
+                            <span style="font-size:11px; background-color:#e8f0fe; color:#1a73e8; padding:2px 8px; border-radius:100px; font-weight:500; text-transform:uppercase;">Container Targeting: ${ext.displayType}</span>
+                        </div>
+                        <button class="settings-btn danger" style="padding:6px 12px; font-size:12px;" onclick="deleteExtension('${id}')">Remove Module</button>
+                    </div>
+                `;
+                settingsExtensionsContainer.appendChild(card);
+            });
+        }
+
         function triggerExtensionDisplay(id) {
             const ext = extensionsDatabase[id];
+            closeSettingsPage(); // Viewing an extension exits the settings environment
 
             if (ext.displayType === 'sidebar') {
                 popupWindow.classList.remove('show');
-
                 if (sidebarPanel.style.display === 'block' && sidebarIframe.src === ext.url) {
                     sidebarPanel.style.display = 'none';
                     sidebarResizer.style.display = 'none';
@@ -579,7 +706,6 @@
             } else {
                 sidebarPanel.style.display = 'none';
                 sidebarResizer.style.display = 'none';
-
                 if (popupWindow.classList.contains('show') && popupIframe.src === ext.url) {
                     popupWindow.classList.remove('show');
                     popupIframe.src = "about:blank";
@@ -592,7 +718,6 @@
             }
         }
 
-        // Global Outside clicks window manager closer
         window.onclick = function(event) {
             if (!event.target.closest('.extensions-mgmt-container') && 
                 !event.target.closest('.more-mgmt-container') && 
