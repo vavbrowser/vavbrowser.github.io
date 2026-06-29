@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>New Tb</title>
+    <title>New Tab</title>
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -26,7 +26,7 @@
             background-color: #202124;
         }
         
-        /* Browser Header Toolbar */
+        /* Header Toolbar */
         .chrome-bar {
             background-color: #2f3033;
             padding: 8px 12px;
@@ -96,7 +96,7 @@
             font-family: 'Roboto', sans-serif;
         }
 
-        /* Active Installed Extension Shortcuts Bar */
+        /* Active Extension Shortcuts */
         .extension-shortcuts {
             display: flex;
             gap: 6px;
@@ -106,7 +106,7 @@
             color: #8ab4f8;
         }
 
-        /* Core Extension Management Drawer */
+        /* Extension Management Drawer */
         .extensions-mgmt-container {
             position: relative;
         }
@@ -118,7 +118,7 @@
             background-color: #2d2d30;
             border: 1px solid #434346;
             border-radius: 8px;
-            width: 280px;
+            width: 300px;
             box-shadow: 0 4px 12px rgba(0,0,0,0.5);
             padding: 12px;
             color: #e8eaed;
@@ -134,6 +134,17 @@
             border-bottom: 1px solid #3c4043;
             font-size: 13px;
         }
+        .delete-ext-btn {
+            background: none;
+            border: none;
+            color: #ea4335;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+        }
+        .delete-ext-btn:hover { color: #ff6b6b; }
+        .delete-ext-btn .material-symbols-outlined { font-size: 18px; }
+
         .upload-section {
             padding-top: 12px;
             text-align: center;
@@ -152,7 +163,7 @@
         }
         .upload-label:hover { background-color: #4f5357; }
 
-        /* REALISTIC EXTENSION POPUP WINDOW CONTAINER */
+        /* FLOATING POPUP CONTAINER */
         .extension-popup-window {
             display: none;
             position: absolute;
@@ -170,19 +181,54 @@
         .extension-popup-window.show {
             display: block;
         }
-        .popup-iframe {
-            width: 100%;
-            height: 100%;
-            border: none;
-        }
 
-        /* Web Page Window */
-        .browser-content {
+        /* MAIN WORKSPACE SPLIT (Web Window + Resizer + Sidebar) */
+        .workspace {
+            display: flex;
             flex-grow: 1;
             width: 100%;
             height: 100%;
+            position: relative;
+        }
+
+        .browser-content {
+            flex-grow: 1;
+            height: 100%;
             border: none;
             background-color: #202124;
+        }
+
+        /* NEW SIDEBAR DRAGGABLE RESIZER BAR */
+        .sidebar-resizer {
+            display: none; /* Only visible when sidebar is open */
+            width: 6px;
+            height: 100%;
+            background-color: #3c4043;
+            cursor: col-resize;
+            z-index: 6;
+            transition: background 0.15s;
+        }
+        .sidebar-resizer:hover, .sidebar-resizer.dragging {
+            background-color: #8ab4f8;
+        }
+
+        /* FIXED PANEL SIDEBAR PANEL */
+        .sidebar-panel {
+            display: none; 
+            width: 320px; /* Default starting width */
+            min-width: 200px;
+            max-width: 70vw;
+            height: 100%;
+            background-color: #ffffff;
+            border-left: 1px solid #3c4043;
+            box-shadow: -4px 0 16px rgba(0,0,0,0.3);
+            z-index: 5;
+        }
+        
+        .popup-iframe, .sidebar-iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
         }
     </style>
 </head>
@@ -209,9 +255,7 @@
             
             <div class="extensions-menu" id="extMenu">
                 <h4 style="margin-bottom: 8px; font-size: 14px; font-weight: 500; border-bottom: 1px solid #3c4043; padding-bottom: 6px;">Manage Extensions</h4>
-                <div id="installedList">
-                    <p style="font-size: 12px; color: #9aa0a6; text-align: center; padding: 10px 0;">No custom extensions uploaded yet.</p>
-                </div>
+                <div id="installedList"></div>
                 
                 <div class="upload-section">
                     <label for="extUpload" class="upload-label">
@@ -228,7 +272,15 @@
         </div>
     </div>
 
-    <iframe id="browserFrame" class="browser-content" src="https://www.google.com/webhp?igu=1"></iframe>
+    <div class="workspace">
+        <iframe id="browserFrame" class="browser-content" src="https://www.google.com/webhp?igu=1"></iframe>
+        
+        <div class="sidebar-resizer" id="sidebarResizer"></div>
+        
+        <div class="sidebar-panel" id="sidebarPanel">
+            <iframe id="sidebarIframe" class="sidebar-iframe" src="about:blank"></iframe>
+        </div>
+    </div>
 
     <script>
         const iframe = document.getElementById('browserFrame');
@@ -236,10 +288,73 @@
         const extMenu = document.getElementById('extMenu');
         const shortcutBar = document.getElementById('shortcutBar');
         const installedList = document.getElementById('installedList');
+        
+        // Windows & Drag Items
         const popupWindow = document.getElementById('popupWindow');
         const popupIframe = document.getElementById('popupIframe');
+        const sidebarPanel = document.getElementById('sidebarPanel');
+        const sidebarIframe = document.getElementById('sidebarIframe');
+        const sidebarResizer = document.getElementById('sidebarResizer');
 
         let extensionsDatabase = {};
+        let isResizing = false;
+
+        // --- Core Startup Initialization ---
+        window.addEventListener('DOMContentLoaded', () => {
+            // 1. Recover last saved sidebar dimensions
+            const savedWidth = localStorage.getItem('chrome_sidebar_width');
+            if (savedWidth) {
+                sidebarPanel.style.width = savedWidth + 'px';
+            }
+
+            // 2. Recover and reinstall saved extensions database
+            const savedExtensions = localStorage.getItem('chrome_saved_extensions');
+            if (savedExtensions) {
+                const parsedData = JSON.parse(savedExtensions);
+                Object.keys(parsedData).forEach(id => {
+                    const ext = parsedData[id];
+                    // Rebuild active runtime Blobs from original saved raw strings
+                    const blob = new Blob([ext.rawHtml], { type: 'text/html' });
+                    const blobURL = URL.createObjectURL(blob);
+
+                    extensionsDatabase[id] = {
+                        name: ext.name,
+                        rawHtml: ext.rawHtml,
+                        url: blobURL,
+                        displayType: ext.displayType
+                    };
+                });
+                renderExtensionsUI();
+            }
+        });
+
+        // --- Sidebar Drag Resize Engine ---
+        sidebarResizer.addEventListener('mousedown', (e) => {
+            isResizing = true;
+            sidebarResizer.classList.add('dragging');
+            document.body.style.cursor = 'col-resize';
+            e.preventDefault(); // Stop standard highlight loops
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!isResizing) return;
+            // Calculate distance between mouse coordinates and browser window right margin bounds
+            const newWidth = window.innerWidth - e.clientX;
+            
+            // Apply minimum and maximum window layout scale locks
+            if (newWidth > 200 && newWidth < (window.innerWidth * 0.7)) {
+                sidebarPanel.style.width = newWidth + 'px';
+                localStorage.setItem('chrome_sidebar_width', newWidth);
+            }
+        });
+
+        document.addEventListener('mouseup', () => {
+            if (isResizing) {
+                isResizing = false;
+                sidebarResizer.classList.remove('dragging');
+                document.body.style.cursor = 'default';
+            }
+        });
 
         function handleNavigation(event) {
             if (event.key === 'Enter') {
@@ -255,10 +370,10 @@
         function reloadPage() { iframe.src = iframe.src; }
         function toggleExtensionsMenu() { 
             extMenu.classList.toggle('show'); 
-            popupWindow.classList.remove('show'); // Hide active popups when looking at options menu
+            popupWindow.classList.remove('show'); 
         }
 
-        // Processing Uploaded .html Extensions
+        // Processing Uploaded Extensions
         function handleExtensionUpload(event) {
             const file = event.target.files[0];
             if (!file) return;
@@ -269,23 +384,53 @@
                 const extensionId = 'ext_' + Date.now();
                 const extensionName = file.name.replace('.html', '');
 
-                // Turn the raw html/css/js code string into a standalone secure execution object
+                const loadAsSidebar = confirm(`Would you like to open "${extensionName}" inside a split-screen SIDEBAR?\n\n(Click 'Cancel' to load it as a standard top-right Popup instead)`);
+
                 const blob = new Blob([fileRawContent], { type: 'text/html' });
                 const blobURL = URL.createObjectURL(blob);
 
-                // Save to database
                 extensionsDatabase[extensionId] = {
                     name: extensionName,
-                    url: blobURL
+                    rawHtml: fileRawContent, // Keep the code intact for the database
+                    url: blobURL,
+                    displayType: loadAsSidebar ? 'sidebar' : 'popup'
                 };
 
+                saveExtensionsToStorage();
                 renderExtensionsUI();
             };
             reader.readAsText(file);
-            event.target.value = ''; // Reset file input descriptor
+            event.target.value = ''; 
         }
 
-        // Render shortcuts and layout updates
+        // Save internal database state to storage
+        function saveExtensionsToStorage() {
+            const exportableData = {};
+            Object.keys(extensionsDatabase).forEach(id => {
+                const ext = extensionsDatabase[id];
+                exportableData[id] = {
+                    name: ext.name,
+                    rawHtml: ext.rawHtml,
+                    displayType: ext.displayType
+                };
+            });
+            localStorage.setItem('chrome_saved_extensions', JSON.stringify(exportableData));
+        }
+
+        // Uninstall Extension Action handler
+        function deleteExtension(id) {
+            delete extensionsDatabase[id];
+            saveExtensionsToStorage();
+            
+            // Soft reset view panes if the deleted item was currently open
+            sidebarPanel.style.display = 'none';
+            sidebarResizer.style.display = 'none';
+            popupWindow.classList.remove('show');
+            
+            renderExtensionsUI();
+        }
+
+        // Render UI panels and layout components
         function renderExtensionsUI() {
             installedList.innerHTML = '';
             shortcutBar.innerHTML = '';
@@ -299,38 +444,68 @@
             keys.forEach(id => {
                 const ext = extensionsDatabase[id];
 
-                // Add to internal settings manager view list
+                // Render into management panel item
                 const item = document.createElement('div');
                 item.className = 'extension-list-item';
-                item.innerHTML = `<span>🧩 ${ext.name}</span> <span style="color:#8ab4f8; font-size:11px;">Active</span>`;
+                item.innerHTML = `
+                    <div>
+                        <span style="font-size:14px; margin-right:4px;">🧩</span>
+                        <strong>${ext.name}</strong> 
+                        <span style="color:#9aa0a6; font-size:10px; margin-left:4px;">(${ext.displayType})</span>
+                    </div>
+                    <button class="delete-ext-btn" title="Uninstall Extension" onclick="deleteExtension('${id}')">
+                        <span class="material-symbols-outlined">delete</span>
+                    </button>
+                `;
                 installedList.appendChild(item);
 
-                // Create Chrome Action Icon on browser bar
+                // Create Taskbar Action Buttons
                 const shortcut = document.createElement('button');
                 shortcut.className = 'btn ext-shortcut-btn';
                 shortcut.title = ext.name;
-                shortcut.innerHTML = `<span class="material-symbols-outlined">deployed_code</span>`;
+                
+                const iconName = ext.displayType === 'sidebar' ? 'dock_to_left' : 'deployed_code';
+                shortcut.innerHTML = `<span class="material-symbols-outlined">${iconName}</span>`;
+                
                 shortcut.onclick = (e) => {
-                    e.stopPropagation(); // Avoid triggering global body close clicks
-                    toggleExtensionPopup(ext.url);
+                    e.stopPropagation(); 
+                    triggerExtensionDisplay(id);
                 };
                 shortcutBar.appendChild(shortcut);
             });
         }
 
-        // Handles displaying/rendering the isolated extension iframe
-        function toggleExtensionPopup(blobURL) {
-            if (popupWindow.classList.contains('show') && popupIframe.src === blobURL) {
+        // Logic routing for active windows
+        function triggerExtensionDisplay(id) {
+            const ext = extensionsDatabase[id];
+
+            if (ext.displayType === 'sidebar') {
                 popupWindow.classList.remove('show');
-                popupIframe.src = "about:blank";
+
+                if (sidebarPanel.style.display === 'block' && sidebarIframe.src === ext.url) {
+                    sidebarPanel.style.display = 'none';
+                    sidebarResizer.style.display = 'none'; // Hide resizer bar
+                    sidebarIframe.src = "about:blank";
+                } else {
+                    sidebarIframe.src = ext.url;
+                    sidebarPanel.style.display = 'block';
+                    sidebarResizer.style.display = 'block'; // Show resizer bar
+                }
             } else {
-                popupIframe.src = blobURL;
-                popupWindow.classList.add('show');
-                extMenu.classList.remove('show'); // Clean view overlap
+                sidebarPanel.style.display = 'none';
+                sidebarResizer.style.display = 'none';
+
+                if (popupWindow.classList.contains('show') && popupIframe.src === ext.url) {
+                    popupWindow.classList.remove('show');
+                    popupIframe.src = "about:blank";
+                } else {
+                    popupIframe.src = ext.url;
+                    popupWindow.classList.add('show');
+                    extMenu.classList.remove('show'); 
+                }
             }
         }
 
-        // Close dropdowns/popups when tapping alternative UI coordinates
         window.onclick = function(event) {
             if (!event.target.closest('.extensions-mgmt-container') && 
                 !event.target.closest('.extension-popup-window') && 
