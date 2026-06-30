@@ -1,13 +1,14 @@
 const $=id=>document.getElementById(id);
 let tabs=[],activeTabId=null,nextTabId=1;
 const STORAGE={BOOK:'mc_bmk',HIST:'mc_hist'};
+let notificationHistory = []; // Persistent logging layer for sidebar feed
 
 // Globally scoped placeholder elements to avoid head-loading crashes
 let searchSel, addr, status, webArea, loading;
-let bookmarksEl, historyEl, addrFav;
+let bookmarksEl, historyEl, addrFav, notificationsEl;
 let internalPage;
 
-const SCRIPT_VERSION = "5.0"; 
+const SCRIPT_VERSION = "5.1"; 
 let osEnabled = localStorage.getItem('vav_os_mode') === 'true';
 
 // Prevent full screen flashing before OS layer migrates elements
@@ -207,6 +208,31 @@ function addBmk(u){
   }
 }
 
+function renderSidebarNotifications() {
+  if (!notificationsEl) return;
+  notificationsEl.innerHTML = '';
+  
+  if (notificationHistory.length === 0) {
+    notificationsEl.innerHTML = '<p style="color:var(--muted); font-size:11px; margin:4px 0; font-style:italic;">No logged notifications.</p>';
+    return;
+  }
+  
+  notificationHistory.forEach(item => {
+    const d = document.createElement('div');
+    d.className = 'card';
+    d.style.cssText = 'display:flex; gap:10px; align-items:flex-start; padding:8px 10px; margin-bottom:6px; background:rgba(255,255,255,0.02); border-radius:6px; border:1px solid rgba(255,255,255,0.04);';
+    d.innerHTML = `
+      <span class="material-symbols-outlined" style="font-size:16px; color:var(--accent); margin-top:2px;">${item.icon || 'notifications'}</span>
+      <div style="flex:1; min-width:0;">
+        <div style="font-weight:600; font-size:12px; color:#fff; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${item.title}</div>
+        <div style="font-size:11px; color:var(--muted); margin-top:2px; line-height:1.3; word-break:break-word;">${item.message}</div>
+        <small style="font-size:9px; color:rgba(255,255,255,0.25); display:block; margin-top:4px;">${new Date(item.ts).toLocaleTimeString()}</small>
+      </div>
+    `;
+    notificationsEl.appendChild(d);
+  });
+}
+
 function renderPanels(){
   if(bookmarksEl) {
     bookmarksEl.innerHTML='';
@@ -220,11 +246,28 @@ function renderPanels(){
       const d=document.createElement('div');d.className='card';d.innerHTML=`<div>${x.u}</div><small>${new Date(x.ts).toLocaleTimeString()}</small>`;d.onclick=()=>createTab(x.u,true);historyEl.appendChild(d);
     });
   }
+  renderSidebarNotifications();
 }
 
 function initBrowserCore() {
   searchSel=$('searchEngine'); addr=$('address'); status=$('status'); webArea=$('webviewArea'); loading=$('loadingBar');
   bookmarksEl=$('bookmarksList'); historyEl=$('historyList'); addrFav=$('addrFavicon');
+  notificationsEl=$('notificationsList');
+
+  // Dynamic structural generation of sidebar notification frame if omitted inside native layout
+  if($('sidePanels') && !notificationsEl) {
+    const notifyPanel = document.createElement('div');
+    notifyPanel.id = 'sidebarNotificationsContainer';
+    notifyPanel.style.cssText = 'margin-top:20px; border-top:1px solid rgba(255,255,255,0.08); padding-top:14px;';
+    notifyPanel.innerHTML = `
+      <h3 style="font-size:11px; text-transform:uppercase; color:var(--accent); margin:0 0 10px 0; letter-spacing:0.6px; display:flex; align-items:center; gap:6px; font-weight:700;">
+        <span class="material-symbols-outlined" style="font-size:16px;">notifications</span> Notification History
+      </h3>
+      <div id="notificationsList" style="max-height:220px; overflow-y:auto; padding-right:2px;"></div>
+    `;
+    $('sidePanels').appendChild(notifyPanel);
+    notificationsEl = $('notificationsList');
+  }
 
   internalPage = document.createElement('div');
   internalPage.id = 'internalPage';
@@ -408,6 +451,11 @@ function initNotificationEngine() {
       toast.style.transform = 'translateY(-10px) scale(0.9)';
       setTimeout(() => { toast.remove(); }, 300);
     }, 4000);
+
+    // Sidebar integration stream pipeline
+    notificationHistory.unshift({ title, message, icon, ts: Date.now() });
+    if (notificationHistory.length > 50) notificationHistory.pop();
+    renderSidebarNotifications();
   };
 }
 
@@ -551,7 +599,7 @@ function initOSCore() {
     let win = document.createElement('div');
     win.className = 'os-window';
     win.id = 'win-' + id;
-    win.style.width = id === 'browser' ? '920px' : '460px';
+    win.style.width = id === 'browser' ? '920px' : '640px';
     win.style.height = id === 'browser' ? '640px' : '360px';
     win.style.left = (80 + Object.keys(openWindows).length * 30) + 'px';
     win.style.top = (60 + Object.keys(openWindows).length * 30) + 'px';
