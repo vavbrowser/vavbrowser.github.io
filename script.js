@@ -188,7 +188,24 @@ function renderInternalPage(url) {
 window.navInternal = function(url) { nav(url); };
 
 function pushHist(u){const h=JSON.parse(localStorage.getItem(STORAGE.HIST)||'[]');h.unshift({u,ts:Date.now()});localStorage.setItem(STORAGE.HIST,JSON.stringify(h.slice(0,100)));renderPanels();}
-function addBmk(u){const b=JSON.parse(localStorage.getItem(STORAGE.BOOK)||'[]');if(!b.find(x=>x.u===u)){b.unshift({u,ts:Date.now()});localStorage.setItem(STORAGE.BOOK,JSON.stringify(b));renderPanels();}}
+
+function addBmk(u){
+  const b=JSON.parse(localStorage.getItem(STORAGE.BOOK)||'[]');
+  if(!b.find(x=>x.u===u)){
+    b.unshift({u,ts:Date.now()});
+    localStorage.setItem(STORAGE.BOOK,JSON.stringify(b));
+    renderPanels();
+    // Notification Hook: Bookmark Added
+    if(typeof window.showOSNotification === 'function') {
+      window.showOSNotification('Bookmark Saved', `Successfully added "${u}" to directories.`, 'star');
+    }
+  } else {
+    // Notification Hook: Bookmark Warning
+    if(typeof window.showOSNotification === 'function') {
+      window.showOSNotification('Bookmark Notice', 'This URL is already bookmarked.', 'info');
+    }
+  }
+}
 
 function renderPanels(){
   if(bookmarksEl) {
@@ -283,6 +300,10 @@ function initSpeechToText() {
       addressInput.value = '';
       addressInput.placeholder = 'Listening...';
       if (statusEl) statusEl.textContent = "Listening to voice input...";
+      // Notification Hook: Voice Start
+      if(typeof window.showOSNotification === 'function') {
+        window.showOSNotification('Voice Engine Active', 'Listening to structural audio input...', 'mic');
+      }
     };
 
     recognition.onend = () => {
@@ -296,16 +317,98 @@ function initSpeechToText() {
       const voiceResult = event.results[0][0].transcript;
       addressInput.value = voiceResult;
       if (statusEl) statusEl.textContent = "Searching for: " + voiceResult;
+      // Notification Hook: Voice Processed Result
+      if(typeof window.showOSNotification === 'function') {
+        window.showOSNotification('Speech Processed', `Searching for: "${voiceResult}"`, 'record_voice_over');
+      }
       setTimeout(() => { if (goBtn) goBtn.click(); }, 500);
     };
 
     recognition.onerror = (event) => {
       console.error("Speech Recognition Error: ", event.error);
       if (statusEl) statusEl.textContent = "Voice Search Error: " + event.error;
+      // Notification Hook: Voice Exception Fault
+      if(typeof window.showOSNotification === 'function') {
+        window.showOSNotification('Voice Engine Error', event.error, 'error');
+      }
     };
   } else {
     micBtn.style.display = 'none';
   }
+}
+
+
+// --- DYNAMIC TOAST NOTIFICATION ENGINE ---
+function initNotificationEngine() {
+  const style = document.createElement('style');
+  style.innerHTML = `
+    .os-noti-container {
+      position: fixed;
+      bottom: 60px;
+      right: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      z-index: 2000000;
+      pointer-events: none;
+    }
+    .os-toast {
+      background: rgba(24, 28, 36, 0.88);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 12px;
+      padding: 12px 16px;
+      color: #fff;
+      min-width: 260px;
+      max-width: 340px;
+      box-shadow: 0 12px 35px rgba(0, 0, 0, 0.5);
+      pointer-events: auto;
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      transform: translateX(120%);
+      transition: transform 0.3s cubic-bezier(0.1, 0.9, 0.2, 1), opacity 0.25s ease;
+      opacity: 0;
+    }
+    .os-toast.visible {
+      transform: translateX(0);
+      opacity: 1;
+    }
+    .os-toast-body { flex: 1; }
+    .os-toast-title { font-size: 13px; font-weight: 700; color: #fff; margin-bottom: 2px; }
+    .os-toast-msg { font-size: 12px; color: var(--muted); line-height: 1.4; word-break: break-word; }
+  `;
+  document.head.appendChild(style);
+
+  const container = document.createElement('div');
+  container.id = 'osNotificationContainer';
+  container.className = 'os-noti-container';
+  document.body.appendChild(container);
+
+  window.showOSNotification = function(title, message, icon = 'notifications') {
+    const toast = document.createElement('div');
+    toast.className = 'os-toast';
+    toast.innerHTML = `
+      <span class="material-symbols-outlined" style="font-size: 20px; color: var(--accent); margin-top: 1px;">${icon}</span>
+      <div class="os-toast-body">
+        <div class="os-toast-title">${title}</div>
+        <div class="os-toast-msg">${message}</div>
+      </div>
+    `;
+
+    container.appendChild(toast);
+    
+    // Smooth transition trigger
+    requestAnimationFrame(() => { toast.classList.add('visible'); });
+
+    // Automatic decay sequence
+    setTimeout(() => {
+      toast.classList.remove('visible');
+      toast.style.transform = 'translateY(-10px) scale(0.9)';
+      setTimeout(() => { toast.remove(); }, 300);
+    }, 4000);
+  };
 }
 
 
@@ -407,6 +510,11 @@ function initOSCore() {
     topZIndex++;
     win.style.zIndex = topZIndex;
   }
+
+  // Notification Hook: OS Workspace Welcoming Status
+  setTimeout(() => {
+    window.showOSNotification('System Ready', `Running VAV workspace layer build v${SCRIPT_VERSION} successfully.`, 'check_circle');
+  }, 800);
 
   function makeDraggable(win, header) {
     header.onpointerdown = (e) => {
@@ -599,13 +707,18 @@ function initOSCore() {
 window.launchOSApp = function(appId) {
   const panel = $('osLauncherPanel');
   if (panel) panel.style.display = 'none';
+  
   if (appId === 'browser') window.toggleWindowMin('browser', true);
   else if (appId === 'settings') { window.toggleWindowMin('browser', true); nav('vav://settings'); }
   else if (appId === 'notes') {
+    // Notification Hook: App Launch
+    window.showOSNotification('App Initialized', 'Opening Notes Notepad module workspace.', 'description');
     window.osOpenWindow('notes', 'Notes Notepad', 'description', (content) => {
       content.innerHTML = `<textarea style="width:100%; height:100%; background:#12161f; color:#fff; border:none; padding:12px; box-sizing:border-box; font-family:monospace; font-size:13px; resize:none; outline:none;" placeholder="Write structural notes or copy links here..."></textarea>`;
     });
   } else if (appId === 'calc') {
+    // Notification Hook: App Launch
+    window.showOSNotification('App Initialized', 'Opening Math Processing Engine.', 'calculate');
     window.osOpenWindow('calc', 'Calculator', 'calculate', (content) => {
       content.style.padding = '12px'; content.style.display = 'flex'; content.style.justifyContent = 'center';
       content.innerHTML = `
@@ -633,6 +746,8 @@ window.launchOSApp = function(appId) {
       `;
     });
   } else if (appId === 'monitor') {
+    // Notification Hook: App Launch
+    window.showOSNotification('App Initialized', 'Compiling sandbox metrics telemetry.', 'monitoring');
     window.osOpenWindow('monitor', 'Diagnostics Monitor', 'monitoring', (content) => {
       content.style.padding = '14px';
       content.innerHTML = `
@@ -691,6 +806,7 @@ window.updateShelfIndicators = function() {
 function startSystem() {
   initBrowserCore();
   initSpeechToText();
+  initNotificationEngine(); // Set up toast overlay styles and layout loop
   if (osEnabled) {
     initOSCore();
   }
