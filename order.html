@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>vav shop</title>
+    
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+
+    <style>
+        /* Base Reset & Styling */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: #f4f6f8;
+            color: #333;
+        }
+
+        /* Navigation Header */
+        header {
+            background-color: #1a1a2e;
+            color: white;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        header h1 {
+            font-size: 1.5rem;
+        }
+
+        nav a {
+            color: white;
+            text-decoration: none;
+            margin-left: 1.5rem;
+            font-weight: 500;
+            cursor: pointer;
+        }
+
+        nav a:hover {
+            color: #2ec4b6;
+        }
+
+        .cart-badge {
+            background-color: #2ec4b6;
+            color: #1a1a2e;
+            border-radius: 50%;
+            padding: 0.2rem 0.5rem;
+            font-size: 0.85rem;
+            font-weight: bold;
+            margin-left: 0.3rem;
+        }
+
+        /* Hero Banner */
+        .hero {
+            background: linear-gradient(135deg, #0f3460, #16213e);
+            color: white;
+            text-align: center;
+            padding: 3rem 1rem;
+        }
+
+        .hero h2 {
+            font-size: 2.2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .hero p {
+            color: #2ec4b6;
+            font-weight: bold;
+            font-size: 1.2rem;
+        }
+
+        /* Main Store Layout */
+        .container {
+            max-width: 1100px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+
+        .section-title {
+            font-size: 1.8rem;
+            margin-bottom: 1.5rem;
+            text-align: center;
+        }
+
+        .product-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 2rem;
+        }
+
+        /* Product Cards */
+        .card {
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            transition: transform 0.2s ease;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+        }
+
+        .card img {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+            background-color: #e0e0e0;
+        }
+
+        .card-content {
+            padding: 1.2rem;
+            display: flex;
+            flex-direction: column;
+            flex-grow: 1;
+        }
+
+        .card-title {
+            font-size: 1.1rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .card-price-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 0.5rem;
+        }
+
+        .card-price {
+            font-size: 1.25rem;
+            color: #2ec4b6;
+            font-weight: bold;
+        }
+
+        .badge-free {
+            background-color: #e8fcc2;
+            color: #2b9348;
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.85rem;
+        }
+
+        .stock-tag {
+            font-size: 0.85rem;
+            margin-bottom: 1rem;
+            font-weight: bold;
+            color: #2b9348;
+        }
+
+        .stock-tag.out-of-stock {
+            color: #e63946;
+        }
+
+        .btn {
+            margin-top: auto;
+            background-color: #2ec4b6;
+            color: #1a1a2e;
+            font-weight: bold;
+            border: none;
+            padding: 0.7rem 1rem;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1rem;
+            width: 100%;
+            transition: background 0.2s ease;
+        }
+
+        .btn:hover {
+            background-color: #20a39e;
+            color: white;
+        }
+
+        .btn:disabled {
+            background-color: #ccc;
+            color: #666;
+            cursor: not-allowed;
+        }
+
+        /* Modal Overlay & Windows */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal-menu {
+            background: white;
+            width: 90%;
+            max-width: 480px;
+            border-radius: 12px;
+            padding: 2rem;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+            position: relative;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .close-btn {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #888;
+        }
+
+        .close-btn:hover {
+            color: #000;
+        }
+
+        .modal-title {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+            border-bottom: 2px solid #f0f0f0;
+            padding-bottom: 0.5rem;
+        }
+
+        /* Cart View Styles */
+        .cart-list {
+            list-style: none;
+            margin-bottom: 1.5rem;
+        }
+
+        .cart-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.8rem 0;
+            border-bottom: 1px solid #eee;
+        }
+
+        .cart-item-info {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .cart-item-title {
+            font-weight: bold;
+            font-size: 0.95rem;
+        }
+
+        .cart-item-price {
+            font-size: 0.85rem;
+            color: #2ec4b6;
+        }
+
+        .cart-controls {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .cart-qty-btn {
+            background: #eee;
+            border: none;
+            width: 28px;
+            height: 28px;
+            border-radius: 4px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .cart-qty-btn:hover {
+            background: #ddd;
+        }
+
+        .cart-total {
+            display: flex;
+            justify-content: space-between;
+            font-weight: bold;
+            font-size: 1.1rem;
+            margin-bottom: 1.5rem;
+            padding-top: 0.5rem;
+        }
+
+        .empty-cart-msg {
+            text-align: center;
+            color: #888;
+            padding: 2rem 0;
+        }
+
+        /* Form Controls */
+        .order-summary {
+            background: #f8f9fa;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1.2rem;
+        }
+
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.4rem;
+            font-size: 0.9rem;
+            color: #555;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 0.6rem;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 1rem;
+        }
+
+        /* Footer */
+        footer {
+            text-align: center;
+            padding: 1.5rem;
+            background-color: #1a1a2e;
+            color: #aaa;
+            margin-top: 3rem;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>⚡ vav Shop</h1>
+        <nav>
+            <a href="#">Home</a>
+            <a href="#">Freebies</a>
+            <a onclick="openCartModal()">Cart <span id="cartNavCount" class="cart-badge">0</span></a>
+        </nav>
+    </header>
+
+    <section class="hero">
+        <h2>vav shop</h2>
+        <p>Claim your exclusive items for free!</p>
+    </section>
+
+    <main class="container">
+        <h3 class="section-title">Claim Your Items</h3>
+        
+        <div class="product-grid" id="productGrid">
+            <p style="text-align: center; grid-column: 1/-1;">Loading live inventory...</p>
+        </div>
+    </main>
+
+    <div class="modal-overlay" id="cartModal">
+        <div class="modal-menu">
+            <span class="close-btn" onclick="closeCartModal()">&times;</span>
+            <h3 class="modal-title">Shopping Cart</h3>
+            
+            <div id="cartContent"></div>
+
+            <div id="cartFooter" style="display: none;">
+                <div class="cart-total">
+                    <span>Total:</span>
+                    <span style="color: #2ec4b6;">$0.00</span>
+                </div>
+                <button class="btn" onclick="openCheckoutModal()">Proceed to Checkout</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="checkoutModal">
+        <div class="modal-menu">
+            <span class="close-btn" onclick="closeCheckoutModal()">&times;</span>
+            <h3 class="modal-title">Checkout</h3>
+            
+            <div class="order-summary" id="checkoutSummary"></div>
+
+            <form onsubmit="completeOrder(event)">
+                <div class="form-group">
+                    <label for="fullName">Full Name</label>
+                    <input type="text" id="fullName" placeholder="dude Doh" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="email">Email Address</label>
+                    <input type="email" id="email" placeholder="dude@example.com" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="address">Class</label>
+                    <input type="text" id="address" placeholder="Class / Room" required>
+                </div>
+
+                <button type="submit" class="btn" id="submitBtn">Confirm Order ($0.00)</button>
+            </form>
+        </div>
+    </div>
+
+    <footer>
+        <p>&copy; 2026 vav Shop. Built with HTML & CSS.</p>
+    </footer>
+
+    <script>
+        // Firebase Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyDwDe910zdnwDi8Cns-AFkCMZbxXzddJuA",
+            authDomain: "server-bc966.firebaseapp.com",
+            databaseURL: "https://server-bc966-default-rtdb.firebaseio.com",
+            projectId: "server-bc966",
+            storageBucket: "server-bc966.firebasestorage.app",
+            messagingSenderId: "658451047484",
+            appId: "1:658451047484:web:38d3fa3cd5b969b9d6cf39",
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+
+        // Product Catalog Data loaded dynamically from Firebase
+        let products = [];
+
+        // Shopping Cart Object { productId: quantity }
+        let cart = {};
+
+        // Real-time listener for Firebase 'products' node
+        function listenToFirebaseProducts() {
+            database.ref('products').on('value', (snapshot) => {
+                const data = snapshot.val();
+                if (data) {
+                    // Convert Firebase object into array while preserving Firebase keys
+                    products = Object.entries(data).map(([key, value]) => ({
+                        firebaseKey: key,
+                        ...value
+                    }));
+                    renderProducts();
+                } else {
+                    document.getElementById('productGrid').innerHTML = '<p style="text-align:center; grid-column: 1/-1;">No products found in Firebase Realtime Database.</p>';
+                }
+            }, (error) => {
+                console.error("Firebase fetch error:", error);
+                document.getElementById('productGrid').innerHTML = '<p style="text-align:center; color: red; grid-column: 1/-1;">Error connecting to Firebase Database.</p>';
+            });
+        }
+
+        // Render Product Cards Dynamically
+        function renderProducts() {
+            const productGrid = document.getElementById('productGrid');
+            productGrid.innerHTML = '';
+
+            products.forEach(product => {
+                const isOutOfStock = product.stock <= 0;
+                const card = document.createElement('div');
+                card.className = 'card';
+
+                card.innerHTML = `
+                    <img src="${product.image}" alt="${product.name}">
+                    <div class="card-content">
+                        <h4 class="card-title">${product.name}</h4>
+                        <div class="card-price-row">
+                            <span class="card-price">$0.00</span>
+                            <span class="badge-free">FREE</span>
+                        </div>
+                        <p class="stock-tag ${isOutOfStock ? 'out-of-stock' : ''}">
+                            ${isOutOfStock ? '❌ Out of Stock' : `📦 In Stock: ${product.stock}`}
+                        </p>
+                        <button 
+                            class="btn" 
+                            onclick="addToCart(${product.id})" 
+                            ${isOutOfStock ? 'disabled' : ''}>
+                            ${isOutOfStock ? 'Sold Out' : 'Add to Cart'}
+                        </button>
+                    </div>
+                `;
+                productGrid.appendChild(card);
+            });
+        }
+
+        // Add Product to Shopping Cart
+        function addToCart(productId) {
+            const product = products.find(p => p.id === productId);
+            if (!product || product.stock <= 0) return;
+
+            const currentInCart = cart[productId] || 0;
+            if (currentInCart >= product.stock) {
+                alert(`Only ${product.stock} units available in stock!`);
+                return;
+            }
+
+            cart[productId] = currentInCart + 1;
+            updateCartNavCount();
+            alert(`Added "${product.name}" to cart!`);
+        }
+
+        // Update Nav Cart Counter
+        function updateCartNavCount() {
+            const totalItems = Object.values(cart).reduce((sum, qty) => sum + qty, 0);
+            document.getElementById('cartNavCount').innerText = totalItems;
+        }
+
+        // Cart Modal Controls
+        function openCartModal() {
+            renderCartContent();
+            document.getElementById('cartModal').style.display = 'flex';
+        }
+
+        function closeCartModal() {
+            document.getElementById('cartModal').style.display = 'none';
+        }
+
+        function openCheckoutModal() {
+            const totalItems = Object.values(cart).reduce((sum, qty) => sum + qty, 0);
+            if (totalItems === 0) return;
+
+            closeCartModal();
+            renderCheckoutSummary();
+            document.getElementById('checkoutModal').style.display = 'flex';
+        }
+
+        function closeCheckoutModal() {
+            document.getElementById('checkoutModal').style.display = 'none';
+        }
+
+        // Render Cart Modal View
+        function renderCartContent() {
+            const cartContent = document.getElementById('cartContent');
+            const cartFooter = document.getElementById('cartFooter');
+            const itemIds = Object.keys(cart).map(Number);
+
+            if (itemIds.length === 0) {
+                cartContent.innerHTML = '<p class="empty-cart-msg">Your cart is currently empty.</p>';
+                cartFooter.style.display = 'none';
+                return;
+            }
+
+            let html = '<ul class="cart-list">';
+            itemIds.forEach(id => {
+                const qty = cart[id];
+                const product = products.find(p => p.id === id);
+                if (product && qty > 0) {
+                    html += `
+                        <li class="cart-item">
+                            <div class="cart-item-info">
+                                <span class="cart-item-title">${product.name}</span>
+                                <span class="cart-item-price">$0.00</span>
+                            </div>
+                            <div class="cart-controls">
+                                <button class="cart-qty-btn" onclick="changeQty(${product.id}, -1)">-</button>
+                                <span>${qty}</span>
+                                <button class="cart-qty-btn" onclick="changeQty(${product.id}, 1)">+</button>
+                            </div>
+                        </li>
+                    `;
+                }
+            });
+            html += '</ul>';
+
+            cartContent.innerHTML = html;
+            cartFooter.style.display = 'block';
+        }
+
+        // Adjust Quantity in Cart
+        function changeQty(productId, delta) {
+            const product = products.find(p => p.id === productId);
+            if (!product) return;
+
+            const currentQty = cart[productId] || 0;
+            const newQty = currentQty + delta;
+
+            if (delta > 0 && newQty > product.stock) {
+                alert(`Cannot add more. Max stock available: ${product.stock}`);
+                return;
+            }
+
+            if (newQty <= 0) {
+                delete cart[productId];
+            } else {
+                cart[productId] = newQty;
+            }
+
+            updateCartNavCount();
+            renderCartContent();
+        }
+
+        // Render Checkout Order Summary
+        function renderCheckoutSummary() {
+            const checkoutSummary = document.getElementById('checkoutSummary');
+            let summaryHTML = '<strong>Order Summary:</strong><ul style="margin-top: 0.5rem; padding-left: 1.2rem;">';
+
+            Object.keys(cart).forEach(id => {
+                const product = products.find(p => p.id === Number(id));
+                const qty = cart[id];
+                if (product) {
+                    summaryHTML += `<li>${product.name} x ${qty} ($0.00)</li>`;
+                }
+            });
+
+            summaryHTML += '</ul>';
+            checkoutSummary.innerHTML = summaryHTML;
+        }
+
+        // Complete Order & Deduct Stock Directly in Firebase
+        function completeOrder(event) {
+            event.preventDefault();
+
+            const submitBtn = document.getElementById('submitBtn');
+            submitBtn.disabled = true;
+            submitBtn.innerText = "Processing...";
+
+            const name = document.getElementById('fullName').value;
+            const email = document.getElementById('email').value;
+            const address = document.getElementById('address').value;
+
+            const orderedItems = Object.keys(cart).map(id => {
+                const product = products.find(p => p.id === Number(id));
+                return {
+                    name: product.name,
+                    quantity: cart[id]
+                };
+            });
+
+            // Prepare Firebase multi-location update object for deducting stock
+            let dbUpdates = {};
+            Object.keys(cart).forEach(id => {
+                const product = products.find(p => p.id === Number(id));
+                if (product) {
+                    const newStock = Math.max(0, product.stock - cart[id]);
+                    dbUpdates[`/products/${product.firebaseKey}/stock`] = newStock;
+                }
+            });
+
+            // 1. Push order to Firebase 'orders' node
+            database.ref('orders').push({
+                fullName: name,
+                email: email,
+                shippingAddress: address,
+                itemsClaimed: orderedItems,
+                priceTotal: "$0.00",
+                timestamp: new Date().toISOString()
+            })
+            // 2. Update stock counts directly in Firebase 'products' node
+            .then(() => database.ref().update(dbUpdates))
+            .then(() => {
+                // Clear cart and UI state
+                cart = {};
+                updateCartNavCount();
+
+                alert("🎉 Order successfully placed and live Firebase stock updated!");
+                submitBtn.disabled = false;
+                submitBtn.innerText = "Confirm Order ($0.00)";
+                closeCheckoutModal();
+            })
+            .catch((error) => {
+                alert("Error saving order: " + error.message);
+                submitBtn.disabled = false;
+                submitBtn.innerText = "Confirm Order ($0.00)";
+            });
+        }
+
+        // Close modal when clicking on overlay background
+        window.onclick = function(event) {
+            const cartModal = document.getElementById('cartModal');
+            const checkoutModal = document.getElementById('checkoutModal');
+            if (event.target === cartModal) closeCartModal();
+            if (event.target === checkoutModal) closeCheckoutModal();
+        }
+
+        // Initialize Firebase product listener on page load
+        listenToFirebaseProducts();
+    </script>
+
+</body>
+</html>
