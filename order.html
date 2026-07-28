@@ -152,6 +152,16 @@
             padding: 0.2rem 0.5rem;
             border-radius: 4px;
             font-size: 0.85rem;
+            font-weight: bold;
+        }
+
+        .badge-preorder {
+            background-color: #e0f2fe;
+            color: #0284c7;
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            font-weight: bold;
         }
 
         .stock-tag {
@@ -159,6 +169,10 @@
             margin-bottom: 1rem;
             font-weight: bold;
             color: #2b9348;
+        }
+
+        .stock-tag.pre-order {
+            color: #0284c7;
         }
 
         .stock-tag.out-of-stock {
@@ -177,6 +191,15 @@
             font-size: 1rem;
             width: 100%;
             transition: background 0.2s ease;
+        }
+
+        .btn-preorder {
+            background-color: #0284c7;
+            color: white;
+        }
+
+        .btn-preorder:hover {
+            background-color: #0369a1;
         }
 
         .btn:hover {
@@ -343,18 +366,18 @@
         <h1>⚡ vav Shop</h1>
         <nav>
             <a href="#">Home</a>
-            <a href="#">Freebies</a>
+            <a href="#">Freebies & Pre-Orders</a>
             <a onclick="openCartModal()">Cart <span id="cartNavCount" class="cart-badge">0</span></a>
         </nav>
     </header>
 
     <section class="hero">
         <h2>vav shop</h2>
-        <p>Claim your exclusive items for free!</p>
+        <p>Pre-order upcoming devices & claim exclusive items for free!</p>
     </section>
 
     <main class="container">
-        <h3 class="section-title">Claim Your Items</h3>
+        <h3 class="section-title">Claim & Pre-Order Items</h3>
         
         <div class="product-grid" id="productGrid">
             <p style="text-align: center; grid-column: 1/-1;">Loading live inventory...</p>
@@ -437,14 +460,13 @@
             database.ref('products').on('value', (snapshot) => {
                 const data = snapshot.val();
                 if (data) {
-                    // Convert Firebase object into array while preserving Firebase keys
                     products = Object.entries(data).map(([key, value]) => ({
                         firebaseKey: key,
                         ...value
                     }));
                     renderProducts();
                 } else {
-                    document.getElementById('productGrid').innerHTML = '<p style="text-align:center; grid-column: 1/-1;">No products found in Firebase Realtime Database.</p>';
+                    document.getElementById('productGrid').innerHTML = '<p style="text-align:center; grid-column: 1/-1;">No products found in Firebase Database.</p>';
                 }
             }, (error) => {
                 console.error("Firebase fetch error:", error);
@@ -459,6 +481,7 @@
 
             products.forEach(product => {
                 const isOutOfStock = product.stock <= 0;
+                const isPreOrder = product.isPreOrder || false;
                 const card = document.createElement('div');
                 card.className = 'card';
 
@@ -468,16 +491,18 @@
                         <h4 class="card-title">${product.name}</h4>
                         <div class="card-price-row">
                             <span class="card-price">$0.00</span>
-                            <span class="badge-free">FREE</span>
+                            <span class="${isPreOrder ? 'badge-preorder' : 'badge-free'}">
+                                ${isPreOrder ? 'PRE-ORDER' : 'FREE'}
+                            </span>
                         </div>
-                        <p class="stock-tag ${isOutOfStock ? 'out-of-stock' : ''}">
-                            ${isOutOfStock ? '❌ Out of Stock' : `📦 In Stock: ${product.stock}`}
+                        <p class="stock-tag ${isOutOfStock ? 'out-of-stock' : (isPreOrder ? 'pre-order' : '')}">
+                            ${isOutOfStock ? '❌ Sold Out' : (isPreOrder ? `🚀 Pre-Order Available (${product.stock} left)` : `📦 In Stock: ${product.stock}`)}
                         </p>
                         <button 
-                            class="btn" 
+                            class="btn ${isPreOrder ? 'btn-preorder' : ''}" 
                             onclick="addToCart(${product.id})" 
                             ${isOutOfStock ? 'disabled' : ''}>
-                            ${isOutOfStock ? 'Sold Out' : 'Add to Cart'}
+                            ${isOutOfStock ? 'Sold Out' : (isPreOrder ? 'Pre-Order Now' : 'Add to Cart')}
                         </button>
                     </div>
                 `;
@@ -492,7 +517,7 @@
 
             const currentInCart = cart[productId] || 0;
             if (currentInCart >= product.stock) {
-                alert(`Only ${product.stock} units available in stock!`);
+                alert(`Only ${product.stock} units available!`);
                 return;
             }
 
@@ -547,10 +572,11 @@
                 const qty = cart[id];
                 const product = products.find(p => p.id === id);
                 if (product && qty > 0) {
+                    const tag = product.isPreOrder ? ' <small style="color:#0284c7;">(Pre-order)</small>' : '';
                     html += `
                         <li class="cart-item">
                             <div class="cart-item-info">
-                                <span class="cart-item-title">${product.name}</span>
+                                <span class="cart-item-title">${product.name}${tag}</span>
                                 <span class="cart-item-price">$0.00</span>
                             </div>
                             <div class="cart-controls">
@@ -600,7 +626,8 @@
                 const product = products.find(p => p.id === Number(id));
                 const qty = cart[id];
                 if (product) {
-                    summaryHTML += `<li>${product.name} x ${qty} ($0.00)</li>`;
+                    const tag = product.isPreOrder ? ' [PRE-ORDER]' : '';
+                    summaryHTML += `<li>${product.name}${tag} x ${qty} ($0.00)</li>`;
                 }
             });
 
@@ -624,7 +651,8 @@
                 const product = products.find(p => p.id === Number(id));
                 return {
                     name: product.name,
-                    quantity: cart[id]
+                    quantity: cart[id],
+                    isPreOrder: product.isPreOrder || false
                 };
             });
 
@@ -650,11 +678,10 @@
             // 2. Update stock counts directly in Firebase 'products' node
             .then(() => database.ref().update(dbUpdates))
             .then(() => {
-                // Clear cart and UI state
                 cart = {};
                 updateCartNavCount();
 
-                alert("🎉 Order successfully placed and live Firebase stock updated!");
+                alert("🎉 Order / Pre-order successfully placed and stock updated!");
                 submitBtn.disabled = false;
                 submitBtn.innerText = "Confirm Order ($0.00)";
                 closeCheckoutModal();
