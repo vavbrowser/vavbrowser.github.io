@@ -119,6 +119,7 @@
             height: 200px;
             object-fit: cover;
             background-color: #e0e0e0;
+            cursor: pointer;
         }
 
         .card-content {
@@ -179,8 +180,13 @@
             color: #e63946;
         }
 
-        .btn {
+        .card-actions {
+            display: flex;
+            gap: 0.5rem;
             margin-top: auto;
+        }
+
+        .btn {
             background-color: #2ec4b6;
             color: #1a1a2e;
             font-weight: bold;
@@ -191,6 +197,23 @@
             font-size: 1rem;
             width: 100%;
             transition: background 0.2s ease;
+        }
+
+        .btn-secondary {
+            background-color: #e2e8f0;
+            color: #1a1a2e;
+            font-weight: bold;
+            border: none;
+            padding: 0.7rem 0.8rem;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: background 0.2s ease;
+            white-space: nowrap;
+        }
+
+        .btn-secondary:hover {
+            background-color: #cbd5e1;
         }
 
         .btn-preorder {
@@ -375,13 +398,12 @@
         <h2>vav shop</h2>
         <p>Pre-order upcoming devices & claim exclusive items for free!</p>
     </section>
-  <div style="position: relative; width: 100%; height: 0; padding-top: 56.2500%;
- padding-bottom: 0; box-shadow: 0 2px 8px 0 rgba(63,69,81,0.16); margin-top: 1.6em; margin-bottom: 0.9em; overflow: hidden;
- border-radius: 8px; will-change: transform;">
-  <iframe loading="lazy" style="position: absolute; width: 100%; height: 100%; top: 0; left: 0; border: none; padding: 0;margin: 0;"
-    src="https://www.canva.com/design/DAHQt2lwCqs/fB39w549mU8c5NpFt9hVhA/watch?embed" allowfullscreen="allowfullscreen" allow="fullscreen">
-  </iframe>
-</div>
+
+    <div style="position: relative; width: 100%; height: 0; padding-top: 56.2500%; padding-bottom: 0; box-shadow: 0 2px 8px 0 rgba(63,69,81,0.16); margin-top: 1.6em; margin-bottom: 0.9em; overflow: hidden; border-radius: 8px; will-change: transform;">
+      <iframe loading="lazy" style="position: absolute; width: 100%; height: 100%; top: 0; left: 0; border: none; padding: 0;margin: 0;"
+        src="https://www.canva.com/design/DAHQt2lwCqs/fB39w549mU8c5NpFt9hVhA/watch?embed" allowfullscreen="allowfullscreen" allow="fullscreen">
+      </iframe>
+    </div>
 
     <main class="container">
         <h3 class="section-title">Claim & Pre-Order Items</h3>
@@ -390,6 +412,13 @@
             <p style="text-align: center; grid-column: 1/-1;">Loading live inventory...</p>
         </div>
     </main>
+
+    <div class="modal-overlay" id="productModal">
+        <div class="modal-menu">
+            <span class="close-btn" onclick="closeProductModal()">&times;</span>
+            <div id="productModalContent"></div>
+        </div>
+    </div>
 
     <div class="modal-overlay" id="cartModal">
         <div class="modal-menu">
@@ -435,6 +464,7 @@
             </form>
         </div>
     </div>
+
     <footer>
         <p>&copy; 2026 vav Shop. Built with HTML & CSS.</p>
     </footer>
@@ -492,7 +522,7 @@
                 card.className = 'card';
 
                 card.innerHTML = `
-                    <img src="${product.image}" alt="${product.name}">
+                    <img src="${product.image}" alt="${product.name}" onclick="openProductModal(${product.id})">
                     <div class="card-content">
                         <h4 class="card-title">${product.name}</h4>
                         <div class="card-price-row">
@@ -504,16 +534,61 @@
                         <p class="stock-tag ${isOutOfStock ? 'out-of-stock' : (isPreOrder ? 'pre-order' : '')}">
                             ${isOutOfStock ? '❌ Sold Out' : (isPreOrder ? `🚀 Pre-Order Available (${product.stock} left)` : `📦 In Stock: ${product.stock}`)}
                         </p>
-                        <button 
-                            class="btn ${isPreOrder ? 'btn-preorder' : ''}" 
-                            onclick="addToCart(${product.id})" 
-                            ${isOutOfStock ? 'disabled' : ''}>
-                            ${isOutOfStock ? 'Sold Out' : (isPreOrder ? 'Pre-Order Now' : 'Add to Cart')}
-                        </button>
+                        <div class="card-actions">
+                            <button class="btn-secondary" onclick="openProductModal(${product.id})">ℹ️ Details</button>
+                            <button 
+                                class="btn ${isPreOrder ? 'btn-preorder' : ''}" 
+                                onclick="addToCart(${product.id})" 
+                                ${isOutOfStock ? 'disabled' : ''}>
+                                ${isOutOfStock ? 'Sold Out' : (isPreOrder ? 'Pre-Order' : 'Add to Cart')}
+                            </button>
+                        </div>
                     </div>
                 `;
                 productGrid.appendChild(card);
             });
+        }
+
+        // Product Info Modal Controls
+        function openProductModal(productId) {
+            const product = products.find(p => p.id === productId);
+            if (!product) return;
+
+            const isOutOfStock = product.stock <= 0;
+            const isPreOrder = product.isPreOrder || false;
+            const modalContent = document.getElementById('productModalContent');
+
+            modalContent.innerHTML = `
+                <img src="${product.image}" alt="${product.name}" style="width:100%; height: 220px; object-fit: cover; border-radius: 8px; margin-bottom: 1rem; background-color: #e0e0e0;">
+                <h3 class="modal-title">${product.name}</h3>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                    <span class="card-price" style="font-size: 1.4rem;">$0.00</span>
+                    <span class="${isPreOrder ? 'badge-preorder' : 'badge-free'}">
+                        ${isPreOrder ? 'PRE-ORDER ITEM' : 'FREE ITEM'}
+                    </span>
+                </div>
+                <p class="stock-tag ${isOutOfStock ? 'out-of-stock' : (isPreOrder ? 'pre-order' : '')}" style="margin-bottom: 1rem;">
+                    ${isOutOfStock ? '❌ Sold Out' : (isPreOrder ? `🚀 Pre-Order Available (${product.stock} left)` : `📦 Current Stock: ${product.stock} units`)}
+                </p>
+                <div style="background: #f8f9fa; padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem; font-size: 0.95rem; line-height: 1.5;">
+                    <strong>Product Details:</strong>
+                    <p style="margin-top: 0.4rem; color: #555;">
+                        ${product.description ? product.description : 'No detailed description available for this item yet.'}
+                    </p>
+                </div>
+                <button 
+                    class="btn ${isPreOrder ? 'btn-preorder' : ''}" 
+                    onclick="addToCart(${product.id}); closeProductModal();" 
+                    ${isOutOfStock ? 'disabled' : ''}>
+                    ${isOutOfStock ? 'Sold Out' : (isPreOrder ? 'Pre-Order Now' : 'Add to Cart')}
+                </button>
+            `;
+
+            document.getElementById('productModal').style.display = 'flex';
+        }
+
+        function closeProductModal() {
+            document.getElementById('productModal').style.display = 'none';
         }
 
         // Add Product to Shopping Cart
@@ -703,8 +778,10 @@
         window.onclick = function(event) {
             const cartModal = document.getElementById('cartModal');
             const checkoutModal = document.getElementById('checkoutModal');
+            const productModal = document.getElementById('productModal');
             if (event.target === cartModal) closeCartModal();
             if (event.target === checkoutModal) closeCheckoutModal();
+            if (event.target === productModal) closeProductModal();
         }
 
         // Initialize Firebase product listener on page load
