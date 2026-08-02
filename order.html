@@ -473,9 +473,10 @@
             <button onclick="executeSearch()" title="Search">🔍</button>
         </div>
 
-        <nav>
-            <a href="#">Home</a>
-            <a href="#">Freebies & Pre-Orders</a>
+       <nav>
+            <a onclick="filterCategory('all')">Home</a>
+            <a onclick="filterCategory('freebies')">avalable now</a>
+            <a onclick="filterCategory('preorders')">Pre-Orders</a>
             <a onclick="openCartModal()">Cart <span id="cartNavCount" class="cart-badge">0</span></a>
         </nav>
     </header>
@@ -570,12 +571,14 @@
         // Initialize Firebase
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
-
-        // Product Catalog Data loaded dynamically from Firebase
+      // Product Catalog Data loaded dynamically from Firebase
         let products = [];
 
         // Shopping Cart Object { productId: quantity }
         let cart = {};
+
+        // Track the currently selected category
+        let currentCategory = 'all';
 
         // Real-time listener for Firebase 'products' node
         function listenToFirebaseProducts() {
@@ -873,17 +876,29 @@
         // Initialize Firebase product listener on page load
         listenToFirebaseProducts();
       // Render Product Cards Dynamically (Updated to support searching)
+       // Render Product Cards (Updated for Categories & Search)
         function renderProducts(searchQuery = '') {
             const productGrid = document.getElementById('productGrid');
             productGrid.innerHTML = '';
 
-            // Filter products based on what the user types
-            const filteredProducts = products.filter(product => 
-                product.name.toLowerCase().includes(searchQuery.toLowerCase())
-            );
+            let filteredProducts = products;
+
+            // 1. First, filter by the selected category
+            if (currentCategory === 'freebies') {
+                filteredProducts = filteredProducts.filter(p => !p.isPreOrder);
+            } else if (currentCategory === 'preorders') {
+                filteredProducts = filteredProducts.filter(p => p.isPreOrder);
+            }
+
+            // 2. Next, filter by whatever is typed in the search bar
+            if (searchQuery.trim() !== '') {
+                filteredProducts = filteredProducts.filter(product => 
+                    product.name.toLowerCase().includes(searchQuery.toLowerCase())
+                );
+            }
 
             if (filteredProducts.length === 0) {
-                productGrid.innerHTML = '<p style="text-align:center; grid-column: 1/-1; font-size: 1.2rem;">No products found matching your search. 🕵️‍♂️</p>';
+                productGrid.innerHTML = '<p style="text-align:center; grid-column: 1/-1; font-size: 1.2rem;">No products found in this category. 🕵️‍♂️</p>';
                 return;
             }
 
@@ -921,15 +936,14 @@
             });
         }
 
-        // New Search Function
-        // New Search Function with Ad Hiding
+        // Search Function (Updated to respect category banners)
         function executeSearch() {
             const query = document.getElementById('searchInput').value.trim();
             const adBanner = document.getElementById('adBanner');
             const heroSection = document.getElementById('heroSection');
             
-            // If the user typed something, hide the banners. Otherwise, show them.
-            if (query.length > 0) {
+            // Hide banners if searching OR if browsing a specific category
+            if (query.length > 0 || currentCategory !== 'all') {
                 if (adBanner) adBanner.style.display = 'none';
                 if (heroSection) heroSection.style.display = 'none';
             } else {
@@ -938,6 +952,30 @@
             }
 
             renderProducts(query);
+        }
+      // Handle clicking the top category links
+        function filterCategory(category) {
+            currentCategory = category;
+            
+            // Clear the search bar so it doesn't conflict with the category
+            document.getElementById('searchInput').value = '';
+            
+            const adBanner = document.getElementById('adBanner');
+            const heroSection = document.getElementById('heroSection');
+            const sectionTitle = document.querySelector('.section-title');
+            
+            // Update the page title and banner visibility based on the category
+            if (category === 'all') {
+                if (adBanner) adBanner.style.display = 'block';
+                if (heroSection) heroSection.style.display = 'block';
+                if (sectionTitle) sectionTitle.innerText = "Claim & Pre-Order Items";
+            } else {
+                if (adBanner) adBanner.style.display = 'none';
+                if (heroSection) heroSection.style.display = 'none';
+                if (sectionTitle) sectionTitle.innerText = category === 'freebies' ? "Free Items" : "Pre-Order Items";
+            }
+
+            renderProducts();
         }
     </script>
 
