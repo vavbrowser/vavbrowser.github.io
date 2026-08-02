@@ -480,12 +480,12 @@
         </nav>
     </header>
 
-    <section class="hero">
+    <section class="hero" id="heroSection">
         <h2>vav shop</h2>
         <p>Pre-order upcoming devices & claim exclusive items for free!</p>
     </section>
 
-    <div style="position: relative; width: 100%; height: 0; padding-top: 56.2500%; padding-bottom: 0; box-shadow: 0 2px 8px 0 rgba(63,69,81,0.16); margin-top: 1.6em; margin-bottom: 0.9em; overflow: hidden; border-radius: 8px; will-change: transform;">
+    <div id="adBanner" style="position: relative; width: 100%; height: 0; padding-top: 56.2500%; padding-bottom: 0; box-shadow: 0 2px 8px 0 rgba(63,69,81,0.16); margin-top: 1.6em; margin-bottom: 0.9em; overflow: hidden; border-radius: 8px; will-change: transform;">
       <iframe loading="lazy" style="position: absolute; width: 100%; height: 100%; top: 0; left: 0; border: none; padding: 0;margin: 0;"
         src="https://www.canva.com/design/DAHQt2lwCqs/fB39w549mU8c5NpFt9hVhA/watch?embed" allowfullscreen="allowfullscreen" allow="fullscreen">
       </iframe>
@@ -922,8 +922,21 @@
         }
 
         // New Search Function
+        // New Search Function with Ad Hiding
         function executeSearch() {
             const query = document.getElementById('searchInput').value.trim();
+            const adBanner = document.getElementById('adBanner');
+            const heroSection = document.getElementById('heroSection');
+            
+            // If the user typed something, hide the banners. Otherwise, show them.
+            if (query.length > 0) {
+                if (adBanner) adBanner.style.display = 'none';
+                if (heroSection) heroSection.style.display = 'none';
+            } else {
+                if (adBanner) adBanner.style.display = 'block';
+                if (heroSection) heroSection.style.display = 'block';
+            }
+
             renderProducts(query);
         }
     </script>
