@@ -381,12 +381,98 @@
             color: #aaa;
             margin-top: 3rem;
         }
+      /* Search Bar Styles */
+        .search-container {
+            display: flex;
+            align-items: center;
+            background: white;
+            border-radius: 20px;
+            padding: 0.2rem 0.5rem;
+            margin: 0 1rem;
+            flex-grow: 1;
+            max-width: 350px;
+        }
+
+        .search-container input {
+            border: none;
+            outline: none;
+            padding: 0.4rem 0.8rem;
+            width: 100%;
+            border-radius: 20px;
+            font-size: 0.95rem;
+            color: #333;
+        }
+
+        .search-container button {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 1.1rem;
+            padding: 0.2rem 0.5rem;
+            transition: transform 0.1s;
+        }
+
+        .search-container button:hover {
+            transform: scale(1.1);
+        }
+
+        /* Adjust header for mobile screens */
+        @media (max-width: 768px) {
+            header {
+                flex-direction: column;
+                gap: 1rem;
+            }
+            .search-container {
+                max-width: 100%;
+                width: 100%;
+                margin: 0;
+            }
+        }
+      /* Make ONLY the Product Info Modal full screen */
+        #productModal .modal-menu {
+            width: 100%;
+            max-width: 100vw;
+            height: 100vh;
+            max-height: 100vh;
+            border-radius: 0;
+            padding: 2rem;
+        }
+
+        /* Keep the content centered and readable on large monitors */
+        #productModalContent {
+            max-width: 800px;
+            margin: 0 auto;
+            padding-top: 1rem;
+        }
+
+        /* Make the close button slightly larger and easier to tap on full screen */
+        #productModal .close-btn {
+            top: 20px;
+            right: 30px;
+            font-size: 2rem;
+            position: fixed; /* Keeps the X in the top right even if they scroll */
+            z-index: 10;
+            background: white;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
     </style>
 </head>
 <body>
 
-    <header>
+   <header>
         <h1>⚡ vav Shop</h1>
+        
+        <div class="search-container">
+            <input type="text" id="searchInput" placeholder="Search products..." onkeyup="executeSearch()">
+            <button onclick="executeSearch()" title="Search">🔍</button>
+        </div>
+
         <nav>
             <a href="#">Home</a>
             <a href="#">Freebies & Pre-Orders</a>
@@ -522,7 +608,7 @@
                 card.className = 'card';
 
                 card.innerHTML = `
-                    <img src="${product.image}" alt="${product.name}" onclick="openProductModal(${product.id})">
+                   <img src="${product.image}" alt="${product.name}" style="width:100%; height: 40vh; min-height: 250px; object-fit: cover; border-radius: 12px; margin-bottom: 1.5rem; background-color: #e0e0e0;">
                     <div class="card-content">
                         <h4 class="card-title">${product.name}</h4>
                         <div class="card-price-row">
@@ -786,6 +872,60 @@
 
         // Initialize Firebase product listener on page load
         listenToFirebaseProducts();
+      // Render Product Cards Dynamically (Updated to support searching)
+        function renderProducts(searchQuery = '') {
+            const productGrid = document.getElementById('productGrid');
+            productGrid.innerHTML = '';
+
+            // Filter products based on what the user types
+            const filteredProducts = products.filter(product => 
+                product.name.toLowerCase().includes(searchQuery.toLowerCase())
+            );
+
+            if (filteredProducts.length === 0) {
+                productGrid.innerHTML = '<p style="text-align:center; grid-column: 1/-1; font-size: 1.2rem;">No products found matching your search. 🕵️‍♂️</p>';
+                return;
+            }
+
+            filteredProducts.forEach(product => {
+                const isOutOfStock = product.stock <= 0;
+                const isPreOrder = product.isPreOrder || false;
+                const card = document.createElement('div');
+                card.className = 'card';
+
+                card.innerHTML = `
+                    <img src="${product.image}" alt="${product.name}" onclick="openProductModal(${product.id})">
+                    <div class="card-content">
+                        <h4 class="card-title">${product.name}</h4>
+                        <div class="card-price-row">
+                            <span class="card-price">$0.00</span>
+                            <span class="${isPreOrder ? 'badge-preorder' : 'badge-free'}">
+                                ${isPreOrder ? 'PRE-ORDER' : 'FREE'}
+                            </span>
+                        </div>
+                        <p class="stock-tag ${isOutOfStock ? 'out-of-stock' : (isPreOrder ? 'pre-order' : '')}">
+                            ${isOutOfStock ? '❌ Sold Out' : (isPreOrder ? `🚀 Pre-Order Available (${product.stock} left)` : `📦 In Stock: ${product.stock}`)}
+                        </p>
+                        <div class="card-actions">
+                            <button class="btn-secondary" onclick="openProductModal(${product.id})">ℹ️ Details</button>
+                            <button 
+                                class="btn ${isPreOrder ? 'btn-preorder' : ''}" 
+                                onclick="addToCart(${product.id})" 
+                                ${isOutOfStock ? 'disabled' : ''}>
+                                ${isOutOfStock ? 'Sold Out' : (isPreOrder ? 'Pre-Order' : 'Add to Cart')}
+                            </button>
+                        </div>
+                    </div>
+                `;
+                productGrid.appendChild(card);
+            });
+        }
+
+        // New Search Function
+        function executeSearch() {
+            const query = document.getElementById('searchInput').value.trim();
+            renderProducts(query);
+        }
     </script>
 
 </body>
