@@ -1,493 +1,676 @@
-const $=id=>document.getElementById(id);
-let tabs=[],activeTabId=null,nextTabId=1;
-const STORAGE={BOOK:'mc_bmk',HIST:'mc_hist'};
-const searchSel=$('searchEngine'), addr=$('address'), status=$('status'), webArea=$('webviewArea'), loading=$('loadingBar');
-const bookmarksEl=$('bookmarksList'), historyEl=$('historyList'), addrFav=$('addrFavicon');
+/* ============================================================
+   vav4.2 Engine Script (Compatible with vavbrowser.html)
+   Coded By Rocco Beban
+   ============================================================ */
 
-function faviconFor(url){
-  try{
-    if(url.startsWith('vav://')) return "";
-    let u=new URL(url);
-    return "https://www.google.com/s2/favicons?sz=32&domain_url="+u.origin;
-  }catch(e){return "";}
-}
+(function () {
+  // Inject additional UI elements into vavbrowser DOM if missing
+  function setupDOMStructure() {
+    const toolbar = document.querySelector('.toolbar');
+    const sidePanels = document.getElementById('sidePanels');
+    const content = document.querySelector('.content');
 
+    // 1. Add missing toolbar buttons dynamically
+    if (toolbar && !document.getElementById('toggleBookmarksBar')) {
+      const goBtn = document.getElementById('goBtn');
 
-function createTab(url='',activate=true){
-  if(!url) url = 'vav://new-tab';
-  const id='t'+(nextTabId++);
-  const tab={id,url,history:url?[url]:[],i:url?0:-1,title:'New Tab',iframe:null,favicon:''};
-  tabs.push(tab);
-  if(activate) activateTab(id);
-  renderTabs();
-}
-// Generates internal browser page structures
-function getVavPage(url) {
-  const target = url.toLowerCase().replace('vav://', '').trim() || 'new-tab';
-  const sharedStyle = `
-    <style>
-      body { background: #0e1116; color: #fff; font-family: 'Segoe UI', system-ui, sans-serif; padding: 40px; text-align: center; margin: 0; }
-      h1 { color: #00bcd4; font-weight: 400; margin-bottom: 8px; font-size: 2.5rem; }
-      p { color: #9ca3af; margin-bottom: 24px; }
-      .box { max-width: 650px; margin: 0 auto; text-align: left; background: #181c24; padding: 24px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.4); }
-      .card { background: #1f242e; padding: 14px; margin: 10px 0; border-radius: 8px; cursor: pointer; transition: background 0.2s, transform 0.1s; display: flex; justify-content: space-between; align-items: center; }
-      .card:hover { background: #2a313e; transform: translateY(-1px); }
-      .card a { color: #00bcd4; text-decoration: none; word-break: break-all; font-size: 14px; }
-      .search-box { width: 100%; padding: 12px 18px; border-radius: 25px; border: 1px solid #2a313e; background: #1f242e; color: #fff; box-sizing: border-box; font-size: 16px; margin-top: 20px; outline: none; transition: border-color 0.2s; }
-      .search-box:focus { border-color: #00bcd4; }
-      .btn-row { margin-top: 20px; display: flex; gap: 12px; justify-content: center; }
-      .nav-btn { background: #1f242e; color: #fff; border: 1px solid #2a313e; padding: 10px 20px; border-radius: 20px; cursor: pointer; transition: all 0.2s; font-size: 14px; }
-      .nav-btn:hover { background: #00bcd4; color: #0e1116; border-color: #00bcd4; }
-    </style>
-  `;
-if (target === 'new-tab') {
-    // This runs in the parent context when generating, which is fine
-    const savedWallpaper = localStorage.getItem('mc_wallpaper') || '';
-    
-    const wallpaperStyle = savedWallpaper 
-      ? `<style>
-          body { 
-            background-image: linear-gradient(rgba(14, 17, 22, 0.6), rgba(14, 17, 22, 0.85)), url('${savedWallpaper}'); 
-            background-size: cover; 
-            background-position: center; 
-            background-attachment: fixed; 
-            background-repeat: no-repeat;
+      const toggleBMBar = document.createElement('div');
+      toggleBMBar.className = 'btn';
+      toggleBMBar.id = 'toggleBookmarksBar';
+      toggleBMBar.title = 'Toggle Bookmarks Bar';
+      toggleBMBar.textContent = '⬍';
+      toolbar.insertBefore(toggleBMBar, goBtn.nextSibling);
+
+      const openFileBtn = document.createElement('div');
+      openFileBtn.className = 'btn';
+      openFileBtn.id = 'openFileBtn';
+      openFileBtn.title = 'Open File';
+      openFileBtn.textContent = '◉';
+      toolbar.insertBefore(openFileBtn, toggleBMBar.nextSibling);
+
+      const fileInput = document.createElement('input');
+      fileInput.type = 'file';
+      fileInput.id = 'openFile';
+      fileInput.accept = '.html,.htm,.png,.jpg,.jpeg,.gif,.webp,.svg,.mp3,.mp4';
+      fileInput.style.display = 'none';
+      toolbar.appendChild(fileInput);
+    }
+
+    // 2. Add Bookmarks Bar beneath Toolbar
+    if (!document.getElementById('bookmarksBar')) {
+      const bmBar = document.createElement('div');
+      bmBar.className = 'bookmarks-bar';
+      bmBar.id = 'bookmarksBar';
+      bmBar.style.cssText = `
+        background:var(--toolbar); height:32px; display:flex; align-items:center;
+        gap:6px; padding:4px 8px; border-bottom:1px solid rgba(255,255,255,0.06);
+        white-space:nowrap; overflow-x:auto; transition:height 0.67s ease, padding 0.67s ease;
+      `;
+      content.parentNode.insertBefore(bmBar, content);
+    }
+
+    // 3. Add Exit Fullscreen Overlay
+    if (!document.getElementById('exitFullscreenOverlay')) {
+      const overlay = document.createElement('div');
+      overlay.id = 'exitFullscreenOverlay';
+      overlay.textContent = '✕ Exit Fullscreen';
+      overlay.style.cssText = `
+        position:fixed; top:12px; right:12px; z-index:2147483647;
+        background:rgba(0,0,0,0.65); padding:8px 12px; border-radius:8px;
+        font-size:14px; cursor:pointer; user-select:none; display:none;
+        color:white; font-weight:600; backdrop-filter: blur(4px); pointer-events:auto;
+      `;
+      document.body.appendChild(overlay);
+    }
+
+    // 4. Update Side Panel Header controls
+    if (sidePanels) {
+      sidePanels.innerHTML = `
+        <div class="btn" id="fullscreenBtn" style="margin:8px">▶</div>
+        <h3 style="padding:8px;color:var(--muted)">
+          Bookmarks
+          <button id="clearBookmarksBtn" style="float:right; background:var(--tab); color:var(--muted); border:none; padding:4px 8px; border-radius:6px; cursor:pointer;">Clear</button>
+        </h3>
+        <div id="bookmarksList"></div>
+        <h3 style="padding:8px;color:var(--muted)">
+          History (by rocco beban)
+          <button id="clearHistoryBtn" style="float:right; background:var(--tab); color:var(--muted); border:none; padding:4px 8px; border-radius:6px; cursor:pointer;">Clear</button>
+          <button id="openBookmarksManagerBtn" style="float:right; background:var(--tab); color:var(--muted); border:none; padding:4px 8px; border-radius:6px; cursor:pointer; margin-right:4px;">★</button>
+        </h3>
+        <div id="historyList"></div>
+      `;
+    }
+  }
+
+  setupDOMStructure();
+
+  /* ============================
+     Core state & helpers
+     ============================ */
+  const $ = id => document.getElementById(id);
+  let tabs = [], activeTabId = null, nextTabId = 1;
+  const STORAGE = { BOOK: 'mc_bmk', HIST: 'mc_hist' };
+
+  const searchSel = $('searchEngine'), addr = $('address'), status = $('status'), webArea = $('webviewArea'), loading = $('loadingBar');
+  const bookmarksEl = $('bookmarksList'), historyEl = $('historyList'), addrFav = $('addrFavicon');
+
+  function getTab(id) {
+    return tabs.find(t => t.id === id) || null;
+  }
+
+  function faviconFor(url) {
+    try {
+      let u = new URL(url);
+      return "https://www.google.com/s2/favicons?sz=32&domain_url=" + u.origin;
+    } catch (e) {
+      return "";
+    }
+  }
+
+  /* ============================
+     Tabs: create, render, manage
+     ============================ */
+  function createTab(url = '', activate = true) {
+    const id = 't' + (nextTabId++);
+    const tab = { id, url, history: url ? [url] : [], i: url ? 0 : -1, title: 'New Tab', iframe: null, favicon: '' };
+    tabs.push(tab);
+    if (activate) activateTab(id);
+    renderTabs();
+  }
+
+  function renderTabs() {
+    $('tabs').innerHTML = '';
+    tabs.forEach(t => {
+      const el = document.createElement('div');
+      el.className = 'tab' + (t.id === activeTabId ? ' active' : '');
+      el.innerHTML = `<div class="favicon">${t.favicon ? `<img src="${t.favicon}">` : ''}</div>
+                    <div class="title">${t.title}</div>
+                    <div class="close" title="Close">✕</div>`;
+      el.onclick = () => activateTab(t.id);
+      el.querySelector('.close').onclick = (e) => { e.stopPropagation(); closeTab(t.id); };
+      $('tabs').appendChild(el);
+    });
+    const btn = document.createElement('button');
+    btn.className = 'add-tab';
+    btn.textContent = '+';
+    btn.onclick = () => createTab('', true);
+    $('tabs').appendChild(btn);
+  }
+
+  function activateTab(id) {
+    activeTabId = id;
+    renderTabs();
+    renderWeb();
+    const t = getTab(id);
+    addr.value = t && t.url ? t.url : '';
+    if (t && t.favicon) {
+      addrFav.src = t.favicon;
+      addrFav.style.display = 'inline-block';
+    } else {
+      addrFav.style.display = 'none';
+    }
+  }
+
+  function closeTab(id) {
+    const i = tabs.findIndex(x => x.id === id);
+    if (i < 0) return;
+    const t = tabs[i];
+    if (t.iframe) t.iframe.remove();
+    const img = document.querySelector(`img[data-tab="${id}"]`); if (img) img.remove();
+    const aud = document.querySelector(`audio[data-tab="${id}"]`); if (aud) aud.remove();
+    const vid = document.querySelector(`video[data-tab="${id}"]`); if (vid) vid.remove();
+    tabs.splice(i, 1);
+    activeTabId = tabs.length ? tabs[Math.max(0, i - 1)].id : null;
+    renderTabs();
+    renderWeb();
+  }
+
+  function renderWeb() {
+    tabs.forEach(t => {
+      const imgs = document.querySelectorAll(`img[data-tab]`); imgs.forEach(im => im.style.display = im.dataset.tab === t.id && t.id === activeTabId ? 'block' : 'none');
+      const auds = document.querySelectorAll(`audio[data-tab]`); auds.forEach(a => a.style.display = a.dataset.tab === t.id && t.id === activeTabId ? 'block' : 'none');
+      const vids = document.querySelectorAll(`video[data-tab]`); vids.forEach(v => v.style.display = v.dataset.tab === t.id && t.id === activeTabId ? 'block' : 'none');
+
+      if (!t.iframe) {
+        const ifr = document.createElement('iframe');
+        ifr.className = 'webview';
+        ifr.dataset.tab = t.id;
+        webArea.appendChild(ifr);
+        t.iframe = ifr;
+
+        ifr.addEventListener('load', () => {
+          try {
+            t.title = t.iframe.contentDocument && t.iframe.contentDocument.title ? t.iframe.contentDocument.title : (t.url || 'New Tab');
+          } catch (e) {
+            t.title = t.url || 'New Tab';
           }
-         </style>` 
-      : '';
+          t.favicon = faviconFor(t.url);
+          renderTabs();
+          if (t.id === activeTabId) {
+            addrFav.src = t.favicon || '';
+            addrFav.style.display = t.favicon ? 'inline-block' : 'none';
+          }
+          if (loading) loading.style.width = '0%';
+          if (status) status.textContent = 'Loaded';
+        });
 
-    return `<html><head>${sharedStyle}${wallpaperStyle}</head><body>
-      <div style="margin-top: 10vh;">
-        <h1>VAV browser</h1>
-        <p>beta 150.0</p>
-        <div style="max-width: 520px; margin: 0 auto;">
-          <input type="text" class="search-box" placeholder="Search or enter URL..." onkeydown="if(event.key==='Enter') window.parent.nav(this.value)">
-          <div class="btn-row" style="flex-wrap: wrap;">
-            <button class="nav-btn" onclick="window.parent.nav('vav://bookmarks')">Bookmarks</button>
-            <button class="nav-btn" onclick="window.parent.nav('vav://history')">History</button>
-            <button class="nav-btn" onclick="window.parent.nav('vav://mall')">Mall</button>
-            <button class="nav-btn" onclick="window.parent.nav('vav://flags')">Flags</button>
-            
-            <input type="file" id="wpUpload" accept="image/*" style="display: none;" onchange="
-              const file = this.files[0];
-              if (file) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                  try {
-                    window.parent.localStorage.setItem('mc_wallpaper', e.target.result);
-                    window.parent.nav('vav://new-tab');
-                  } catch(err) {
-                    alert('Image file is too large for localStorage! Try a smaller compressed image.');
-                  }
-                };
-                reader.readAsDataURL(file);
-              }
-            ">
-            
-            <button class="nav-btn" style="border-color: #00bcd4;" onclick="document.getElementById('wpUpload').click()">📁 Upload Wallpaper</button>
-            ${savedWallpaper ? `<button class="nav-btn" style="border-color: #ef5350; color: #ef5350;" onclick="window.parent.localStorage.removeItem('mc_wallpaper'); window.parent.nav('vav://new-tab');">✕ Clear</button>` : ''}
-          </div>
-        </div>
-      </div>
-    </body></html>`;
-  }
-  
-  if (target === 'bookmarks') {
-    const data = JSON.parse(localStorage.getItem(STORAGE.BOOK) || '[]');
-    let items = data.map(x => `<div class="card" onclick="window.parent.nav('${x.u}')"><a>${x.u}</a><small style="color:#00bcd4">★</small></div>`).join('');
-    return `<html><head>${sharedStyle}</head><body>
-      <div class="box">
-        <h1>Bookmarks</h1>
-        <p>Your saved references</p>
-        ${items || '<p style="text-align:center; padding: 20px 0;">No bookmarks captured yet.</p>'}
-      </div>
-    </body></html>`;
-  }
-
-  if (target === 'history') {
-    const data = JSON.parse(localStorage.getItem(STORAGE.HIST) || '[]');
-    let items = data.map(x => `<div class="card" onclick="window.parent.nav('${x.u}')"><a>${x.u}</a><small style="color:#9ca3af">${new Date(x.ts).toLocaleTimeString()}</small></div>`).join('');
-    return `<html><head>${sharedStyle}</head><body>
-      <div class="box">
-        <h1>History</h1>
-        <p>Recently visited pages</p>
-        ${items || '<p style="text-align:center; padding: 20px 0;">Your browsing history is empty.</p>'}
-      </div>
-    </body></html>`;
-  }
-
-  if (target === 'mall') {
-    return `<html><head>${sharedStyle}</head><body>
-      <div class="box">
-        <h1>Vav Web Mall</h1>
-        <p>Discover extensions, standalone web apps, and custom interface designs</p>
-        <div class="card" onclick="alert('Mock Extension Added Successfully!')">
-          <div><strong>🛡️ AdBlock Pro Max</strong><br><small style="color:#9ca3af">Blocks heavy tracking nodes and scripts.</small></div>
-          <button class="nav-btn" style="padding: 6px 14px; font-size: 12px;">Get</button>
-        </div>
-        <div class="card" onclick="alert('Mock Theme Injected!')">
-          <div><strong>🎨 Dark Cyberpunk Theme</strong><br><small style="color:#9ca3af">Turns layout properties neon blue and sharp pink.</small></div>
-          <button class="nav-btn" style="padding: 6px 14px; font-size: 12px;">Get</button>
-        </div>
-        <div class="card" onclick="alert('Mock Plugin Activated!')">
-          <div><strong>🤖 Reader Mode AI</strong><br><small style="color:#9ca3af">Extract clean readable content blocks automatically.</small></div>
-          <button class="nav-btn" style="padding: 6px 14px; font-size: 12px;">Get</button>
-        </div>
-      </div>
-    </body></html>`;
-  }
-
-  if (target === 'flags') {
-    // Read current live status of Liquid Glass Mode from parent storage
-    const liquidGlassState = window.parent.localStorage.getItem('mc_flag_liquid_glass') || 'Default';
-
-    return `<html><head>${sharedStyle}
-      <style>
-        .flag-item { display: flex; justify-content: space-between; align-items: center; background: #1f242e; padding: 14px; margin: 10px 0; border-radius: 8px; text-align: left; }
-        .flag-desc { color: #9ca3af; font-size: 13px; margin-top: 4px; }
-        select { background: #2a313e; color: #fff; border: 1px solid #3f485c; padding: 6px 12px; border-radius: 6px; cursor: pointer; outline: none; }
-      </style>
-    </head><body>
-      <div class="box">
-        <h1>Vav Experimental Flags</h1>
-        <p style="color: #ffb74d;">⚠️ WARNING: These settings are strictly experimental. Toggling options might compromise UI rendering stability.</p>
-        
-        <div class="flag-item">
-          <div>
-            <strong>#liquid-glass-ui-mode</strong>
-            <div class="flag-desc">Applies advanced hardware-accelerated frosted glass textures and backdrop blur filters across control panels.</div>
-          </div>
-          <select onchange="window.parent.localStorage.setItem('mc_flag_liquid_glass', this.value); location.reload(); alert('Flag saved. The browser environment will update.');">
-            <option ${liquidGlassState === 'Default' ? 'selected' : ''}>Default</option>
-            <option ${liquidGlassState === 'Enabled' ? 'selected' : ''}>Enabled</option>
-            <option ${liquidGlassState === 'Disabled' ? 'selected' : ''}>Disabled</option>
-          </select>
-        </div>
-
-        <div class="flag-item">
-          <div>
-            <strong>#smooth-kinetic-scrolling</strong>
-            <div class="flag-desc">Overrides baseline frame containers to use enhanced hardware-driven physics arrays.</div>
-          </div>
-          <select onchange="alert('Property saved. Restart shell to load updates.')">
-            <option>Default</option>
-            <option selected>Enabled</option>
-            <option>Disabled</option>
-          </select>
-        </div>
-
-        <div class="flag-item">
-          <div>
-            <strong>#strict-origin-isolation</strong>
-            <div class="flag-desc">Saves unique browser environments separately per processing context.</div>
-          </div>
-          <select onchange="alert('Property saved. Restart shell to load updates.')">
-            <option selected>Default</option>
-            <option>Enabled</option>
-            <option>Disabled</option>
-          </select>
-        </div>
-      </div>
-    </body></html>`;
-  }
-  return `<html><head>${sharedStyle}</head><body><h1>404</h1><p>Internal address <code>vav://${target}</code> not found.</p></body></html>`;
-}
-function renderTabs(){
-  $('tabs').innerHTML='';
-  tabs.forEach(t=>{
-    const el=document.createElement('div');
-    el.className='tab'+(t.id===activeTabId?' active':'');
-    el.innerHTML=`<div class="favicon">${t.favicon?`<img src="${t.favicon}">`:''}</div>
-                  <div class="title">${t.title}</div>
-                  <div class="close">✕</div>`;
-    el.onclick=()=>activateTab(t.id);
-    el.querySelector('.close').onclick=(e)=>{e.stopPropagation();closeTab(t.id)};
-    $('tabs').appendChild(el);
-  });
-  const btn=document.createElement('button');btn.className='add-tab';btn.textContent='+';btn.onclick=()=>createTab('',true);
-  $('tabs').appendChild(btn);
-}
-
-function activateTab(id){
-  activeTabId=id;renderTabs();renderWeb();
-  const t=getTab(id);addr.value=t.url||'';addrFav.src=t.favicon||'';
-}
-
-function getTab(id){return tabs.find(t=>t.id===id);}
-
-function closeTab(id){
-  const i=tabs.findIndex(x=>x.id===id);
-  if(i<0)return;
-  if(tabs[i].iframe)tabs[i].iframe.remove();
-  tabs.splice(i,1);
-  activeTabId=tabs.length?tabs[Math.max(0,i-1)].id:null;
-  renderTabs();renderWeb();
-}
-
-function renderWeb(){
-  tabs.forEach(t=>{
-    if(!t.iframe){
-      const ifr=document.createElement('iframe');ifr.className='webview';ifr.dataset.tab=t.id;webArea.appendChild(ifr);t.iframe=ifr;
-      ifr.addEventListener('load',()=>{
-        if(t.url.startsWith('vav://')) {
-          let name = t.url.replace('vav://','');
-          t.title = name ? name.charAt(0).toUpperCase() + name.slice(1) : 'new-tab';
-          t.favicon = '';
-        } else {
-          t.title=t.url||'New Tab';t.favicon=faviconFor(t.url);
-        }
-        renderTabs();if(t.id===activeTabId)addrFav.src=t.favicon;
-        loading.style.width='0%';status.textContent='Loaded';
-      });
-    }
-    t.iframe.style.display=t.id===activeTabId?'block':'none';
-    
-    if(t.id===activeTabId && t.url){
-      if(t.url.startsWith('vav://')) {
-        if(t.iframe.dataset.loadedUrl !== t.url) {
-          t.iframe.dataset.loadedUrl = t.url;
-          t.iframe.removeAttribute('src');
-          loading.style.width='70%';status.textContent='Loading internal page...';
-          t.iframe.srcdoc = getVavPage(t.url);
-        }
-      } else {
-        if(t.iframe.src!==t.url){
-          t.iframe.dataset.loadedUrl = '';
-          t.iframe.removeAttribute('srcdoc');
-          loading.style.width='70%';status.textContent='Loading...';
-          t.iframe.src=t.url;
-        }
+        ifr.addEventListener('error', () => {
+          if (loading) loading.style.width = '0%';
+          if (status) status.textContent = 'Load error';
+        });
       }
-    }
-  });
-}
 
-function nav(raw){
-  const t=getTab(activeTabId);if(!t)return;
-  let u=raw.trim();if(!u)return;
-  
-  if(/^vav:\/\//i.test(u)){
-    // Pass custom internal protocols straight through
-  } else if(/\s/.test(u)||!u.includes('.')) {
-    u=searchSel.value+encodeURIComponent(u);
-  } else if(!/^https?:\/\//.test(u)) {
-    u='https://'+u;
-  }
-  
-  t.history=t.history.slice(0,t.i+1);t.history.push(u);t.i++;
-  t.url=u;addr.value=u;t.favicon=faviconFor(u);addrFav.src=t.favicon;
-  loading.style.width='40%';status.textContent='Loading...';
-  renderWeb();pushHist(u);
-}
+      if (t.iframe) t.iframe.style.display = t.id === activeTabId ? 'block' : 'none';
 
-function pushHist(u){const h=JSON.parse(localStorage.getItem(STORAGE.HIST)||'[]');h.unshift({u,ts:Date.now()});localStorage.setItem(STORAGE.HIST,JSON.stringify(h.slice(0,100)));renderPanels();}
-function addBmk(u){const b=JSON.parse(localStorage.getItem(STORAGE.BOOK)||'[]');if(!b.find(x=>x.u===u)){b.unshift({u,ts:Date.now()});localStorage.setItem(STORAGE.BOOK,JSON.stringify(b));renderPanels();}}
-
-function renderPanels(){
-  bookmarksEl.innerHTML='';JSON.parse(localStorage.getItem(STORAGE.BOOK)||'[]').forEach(x=>{
-    const d=document.createElement('div');d.className='card';d.innerHTML=`<div>${x.u}</div><small>★</small>`;d.onclick=()=>nav(x.u);bookmarksEl.appendChild(d);
-  });
-  historyEl.innerHTML='';JSON.parse(localStorage.getItem(STORAGE.HIST)||'[]').forEach(x=>{
-    const d=document.createElement('div');d.className='card';d.innerHTML=`<div>${x.u}</div><small>${new Date(x.ts).toLocaleTimeString()}</small>`;d.onclick=()=>nav(x.u);historyEl.appendChild(d);
-  });
-}
-
-$('goBtn').onclick=()=>nav(addr.value);addr.onkeydown=e=>{if(e.key==='Enter')nav(addr.value);}
-$('reload').onclick=()=>{const t=getTab(activeTabId);if(t) { if(t.url.startsWith('vav://')) { t.iframe.srcdoc = getVavPage(t.url); } else { t.iframe.src=t.url; } } }
-$('home').onclick=()=>nav('vav://new-tab');
-$('bookmarkBtn').onclick=()=>{const t=getTab(activeTabId);if(t&&t.url)addBmk(t.url);}
-$('toggleBookmarks').onclick=()=>{$('sidePanels').style.display=$('sidePanels').style.display==='none'?'block':'none';}
-$('back').onclick=()=>{const t=getTab(activeTabId);if(t&&t.i>0){t.i--;t.url=t.history[t.i];addr.value=t.url;t.favicon=faviconFor(t.url);addrFav.src=t.favicon;renderWeb();}}
-$('forward').onclick=()=>{const t=getTab(activeTabId);if(t&&t.i<t.history.length-1){t.i++;t.url=t.history[t.i];addr.value=t.url;t.favicon=faviconFor(t.url);addrFav.src=t.favicon;renderWeb();}}
-
-createTab('',true);renderPanels();
-window.nav = nav;
-// --- ALL-IN-ONE JS SPEECH TO TEXT LOGIC ---
-// --- ALL-IN-ONE JS SPEECH TO TEXT (MATERIAL SYMBOLS EDITION) ---
-(function() {
-  const addressInput = document.getElementById('address');
-  const goBtn = document.getElementById('goBtn');
-  const statusEl = document.getElementById('status');
-
-  if (!addressInput) return;
-
-  // 1. Dynamically inject the Material Symbols font stylesheet into the page head
-  const link = document.createElement('link');
-  link.rel = 'stylesheet';
-  link.href = 'https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&icon_names=mic';
-  document.head.appendChild(link);
-
-  // 2. Create the element using the Google Material Symbol class setup
-  const micBtn = document.createElement('span');
-  micBtn.id = 'micBtn';
-  micBtn.className = 'material-symbols-outlined';
-  micBtn.innerText = 'mic';
-  micBtn.title = 'Search with your voice';
-  
-  // 3. Inject styling parameters straight into the element
-  micBtn.style.cursor = 'pointer';
-  micBtn.style.padding = '0 6px';
-  micBtn.style.opacity = '0.6';
-  micBtn.style.fontSize = '22px'; // Formatted cleanly to fit a 34px layout height
-  micBtn.style.transition = 'opacity 0.18s, transform 0.18s, color 0.18s';
-  micBtn.style.userSelect = 'none';
-  micBtn.style.display = 'inline-flex';
-  micBtn.style.alignItems = 'center';
-
-  // Interactive Hover Behaviors
-  micBtn.addEventListener('mouseenter', () => { 
-    micBtn.style.opacity = '1'; 
-    micBtn.style.transform = 'scale(1.08)'; 
-  });
-  micBtn.addEventListener('mouseleave', () => { 
-    micBtn.style.opacity = '0.6'; 
-    micBtn.style.transform = 'scale(1)'; 
-  });
-
-  // 4. Attach layout node right next to the omnibox text field
-  addressInput.parentNode.insertBefore(micBtn, addressInput.nextSibling);
-
-  // 5. Web Speech API Integration Core Logic
-  if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    const recognition = new SpeechRecognition();
-
-    recognition.continuous = false;
-    recognition.interimResults = false;
-    recognition.lang = 'en-US';
-
-    let isListening = false;
-
-    micBtn.addEventListener('click', () => {
-      if (isListening) {
-        recognition.stop();
-      } else {
-        recognition.start();
+      if (t.id === activeTabId && t.url) {
+        if (t.iframe.src !== t.url) {
+          if (loading) loading.style.width = '40%';
+          if (status) status.textContent = 'Loading...';
+          t.iframe.src = t.url;
+        }
       }
     });
 
-    recognition.onstart = () => {
-      isListening = true;
-      micBtn.style.color = '#ef5350'; // Highlights icon in red when active
-      micBtn.style.opacity = '1';
-      addressInput.value = '';
-      addressInput.placeholder = 'Listening...';
-      if (statusEl) statusEl.textContent = "Listening to voice input...";
-    };
-
-    recognition.onend = () => {
-      isListening = false;
-      micBtn.style.color = ''; // Defaults color state back down
-      micBtn.style.opacity = '0.6';
-      addressInput.placeholder = 'Search or type URL';
-    };
-
-    recognition.onresult = (event) => {
-      const voiceResult = event.results[0][0].transcript;
-      addressInput.value = voiceResult;
-      if (statusEl) statusEl.textContent = "Searching for: " + voiceResult;
-      
-      // Short delay sequence before processing click events
-      setTimeout(() => {
-        if (goBtn) goBtn.click();
-      }, 500);
-    };
-
-    recognition.onerror = (event) => {
-      console.error("Speech Recognition Error: ", event.error);
-      if (statusEl) statusEl.textContent = "Voice Search Error: " + event.error;
-    };
-
-  } else {
-    // Hide component gracefully if speech utility layers are absent
-    micBtn.style.display = 'none';
+    const activeTabObj = getTab(activeTabId);
+    if (activeTabObj && activeTabObj.isManager) {
+      renderManager(activeTabObj);
+    } else {
+      document.querySelectorAll('.bm-manager').forEach(el => el.remove());
+    }
   }
-})();
-// --- ALL-IN-ONE JS AI MODE BUTTON ---
-(function() {
-  const addressInput = document.getElementById('address');
-  const goBtn = document.getElementById('goBtn');
-  
-  // Safety check: make sure the toolbar elements exist first
-  if (!goBtn || !addressInput) return;
 
-  // 1. Create the AI Mode button element
-  const aiBtn = document.createElement('div');
-  aiBtn.id = 'aiModeBtn';
-  aiBtn.innerText = 'AI Mode';
-  aiBtn.title = 'Go to Google AI';
-
-  // 2. Style it to look sleek and match your browser's cyan accent theme
-  aiBtn.style.background = 'linear-gradient(135deg, #00bcd4, #00838f)';
-  aiBtn.style.color = '#fff';
-  aiBtn.style.fontSize = '12px';
-  aiBtn.style.fontWeight = '600';
-  aiBtn.style.padding = '0 14px';
-  aiBtn.style.height = '34px';
-  aiBtn.style.borderRadius = '20px'; // Pill shaped
-  aiBtn.style.display = 'inline-flex';
-  aiBtn.style.alignItems = 'center';
-  aiBtn.style.justifyContent = 'center';
-  aiBtn.style.cursor = 'pointer';
-  aiBtn.style.transition = 'transform 0.18s, box-shadow 0.18s';
-  aiBtn.style.userSelect = 'none';
-  aiBtn.style.marginRight = '4px';
-  aiBtn.style.boxShadow = '0 2px 8px rgba(0, 188, 212, 0.2)';
-
-  // Interactive Hover Effects
-  aiBtn.addEventListener('mouseenter', () => {
-    aiBtn.style.transform = 'scale(1.05)';
-    aiBtn.style.boxShadow = '0 4px 12px rgba(0, 188, 212, 0.4)';
-  });
-  aiBtn.addEventListener('mouseleave', () => {
-    aiBtn.style.transform = 'scale(1)';
-    aiBtn.style.boxShadow = '0 2px 8px rgba(0, 188, 212, 0.2)';
-  });
-
-  // 3. Define action when clicked (Fills the address bar and auto-submits)
-  aiBtn.addEventListener('click', () => {
-    addressInput.value = 'https://google.com/ai';
+  /* ============================
+     Navigation + history
+     ============================ */
+  function nav(raw) {
+    const t = getTab(activeTabId); if (!t) return;
+    let u = raw.trim(); if (!u) return;
+    if (/\s/.test(u) || !u.includes('.')) u = searchSel.value + encodeURIComponent(u);
+    else if (!/^https?:\/\//.test(u)) u = 'https://' + u;
     
-    // Automatically triggers your script's built-in navigation logic
-    if (goBtn) {
-      goBtn.click();
+    t.history = t.history.slice(0, t.i + 1);
+    t.history.push(u); t.i = t.history.length - 1;
+    t.url = u; addr.value = u; t.favicon = faviconFor(u);
+    if (t.favicon) { addrFav.src = t.favicon; addrFav.style.display = 'inline-block'; }
+    
+    if (loading) loading.style.width = '40%';
+    if (status) status.textContent = 'Loading...';
+    renderWeb(); pushHist(u);
+  }
+
+  function pushHist(u) {
+    const h = JSON.parse(localStorage.getItem(STORAGE.HIST) || '[]');
+    h.unshift({ u, ts: Date.now() });
+    localStorage.setItem(STORAGE.HIST, JSON.stringify(h.slice(0, 100)));
+    renderPanels();
+  }
+
+  /* ============================
+     Bookmarks + panels
+     ============================ */
+  function addBmk(u) {
+    const b = JSON.parse(localStorage.getItem(STORAGE.BOOK) || '[]');
+    if (!b.find(x => x.u === u)) {
+      b.unshift({ u, ts: Date.now() });
+      localStorage.setItem(STORAGE.BOOK, JSON.stringify(b));
+      renderPanels();
+    }
+  }
+
+  function renderPanels() {
+    if (bookmarksEl) {
+      bookmarksEl.innerHTML = '';
+      JSON.parse(localStorage.getItem(STORAGE.BOOK) || '[]').forEach(x => {
+        const d = document.createElement('div'); d.className = 'card';
+        d.innerHTML = `<div>${x.u}</div><small>★</small>`;
+        d.onclick = () => createTab(x.u, true);
+        bookmarksEl.appendChild(d);
+      });
+    }
+
+    if (historyEl) {
+      historyEl.innerHTML = '';
+      JSON.parse(localStorage.getItem(STORAGE.HIST) || '[]').forEach(x => {
+        const d = document.createElement('div'); d.className = 'card';
+        d.innerHTML = `<div>${x.u}</div><small>${new Date(x.ts).toLocaleString()}</small>`;
+        d.onclick = () => createTab(x.u, true);
+        historyEl.appendChild(d);
+      });
+    }
+
+    renderBookmarksBar();
+  }
+
+  function renderBookmarksBar() {
+    const bookmarksBar = $('bookmarksBar');
+    if (!bookmarksBar) return;
+    const b = JSON.parse(localStorage.getItem(STORAGE.BOOK) || '[]');
+    bookmarksBar.innerHTML = '';
+    b.forEach(x => {
+      const btn = document.createElement('div');
+      btn.className = 'bm-btn';
+      btn.style.cssText = 'display:flex; align-items:center; background:var(--tab); padding:4px 10px; border-radius:6px; cursor:pointer; font-size:13px; color:var(--muted);';
+      
+      const icon = document.createElement('img');
+      icon.src = faviconFor(x.u);
+      icon.style.cssText = 'width:16px; height:16px; margin-right:6px;';
+      btn.appendChild(icon);
+
+      const label = document.createElement('span');
+      try {
+        label.textContent = new URL(x.u).hostname.replace('www.', '');
+      } catch (err) {
+        label.textContent = x.u;
+      }
+      btn.appendChild(label);
+
+      btn.onclick = () => createTab(x.u, true);
+      bookmarksBar.appendChild(btn);
+    });
+  }
+
+  /* ============================
+     UI Event Wiring
+     ============================ */
+  $('goBtn').onclick = () => nav(addr.value);
+  addr.onkeydown = e => { if (e.key === 'Enter') nav(addr.value); };
+
+  $('reload').onclick = () => { const t = getTab(activeTabId); if (t && t.iframe) t.iframe.src = t.url; };
+  $('home').onclick = () => nav('https://google.com');
+  $('bookmarkBtn').onclick = () => { const t = getTab(activeTabId); if (t && t.url) addBmk(t.url); };
+  $('toggleBookmarks').onclick = () => { $('sidePanels').style.display = $('sidePanels').style.display === 'none' ? 'block' : 'none'; };
+
+  $('back').onclick = () => {
+    const t = getTab(activeTabId);
+    if (t && t.i > 0) {
+      t.i--; t.url = t.history[t.i]; addr.value = t.url; t.favicon = faviconFor(t.url);
+      if (t.favicon) { addrFav.src = t.favicon; addrFav.style.display = 'inline-block'; }
+      renderWeb();
+    }
+  };
+
+  $('forward').onclick = () => {
+    const t = getTab(activeTabId);
+    if (t && t.i < t.history.length - 1) {
+      t.i++; t.url = t.history[t.i]; addr.value = t.url; t.favicon = faviconFor(t.url);
+      if (t.favicon) { addrFav.src = t.favicon; addrFav.style.display = 'inline-block'; }
+      renderWeb();
+    }
+  };
+
+  if ($('toggleBookmarksBar')) {
+    $('toggleBookmarksBar').onclick = () => { $('bookmarksBar').classList.toggle('hidden'); };
+  }
+  if ($('clearHistoryBtn')) {
+    $('clearHistoryBtn').onclick = () => { localStorage.setItem(STORAGE.HIST, '[]'); renderPanels(); };
+  }
+  if ($('clearBookmarksBtn')) {
+    $('clearBookmarksBtn').onclick = () => { localStorage.setItem(STORAGE.BOOK, '[]'); renderPanels(); };
+  }
+
+  /* ============================
+     FILE LOADING MECHANISM
+     ============================ */
+  const fileInput = $('openFile');
+  if ($('openFileBtn') && fileInput) {
+    $('openFileBtn').onclick = () => fileInput.click();
+
+    fileInput.onchange = e => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const t = getTab(activeTabId) || (() => { createTab('', true); return getTab(activeTabId); })();
+      const ext = file.name.toLowerCase().split('.').pop();
+      const blobURL = URL.createObjectURL(file);
+
+      if (["png", "jpg", "jpeg", "gif", "webp", "svg"].includes(ext)) {
+        if (t.iframe) t.iframe.style.display = "none";
+        const oldImg = document.querySelector(`img[data-tab="${t.id}"]`); if (oldImg) oldImg.remove();
+
+        const img = document.createElement("img");
+        img.src = blobURL; img.dataset.tab = t.id;
+        img.style.cssText = "position:absolute; inset:0; width:100%; height:100%; object-fit:contain; background:#000;";
+        webArea.appendChild(img);
+
+        t.url = blobURL; t.title = file.name; t.favicon = ""; addr.value = file.name;
+        t.history.push(blobURL); t.i = t.history.length - 1;
+        renderTabs(); return;
+      }
+
+      if (["mp3"].includes(ext)) {
+        if (t.iframe) t.iframe.style.display = "none";
+        const oldAudio = document.querySelector(`audio[data-tab="${t.id}"]`); if (oldAudio) oldAudio.remove();
+
+        const audio = document.createElement("audio");
+        audio.dataset.tab = t.id; audio.controls = true; audio.src = blobURL;
+        audio.style.cssText = "position:absolute; inset:0; width:80%; margin:auto; height:50px;";
+        webArea.appendChild(audio);
+
+        t.url = blobURL; t.title = file.name; t.favicon = ""; addr.value = file.name;
+        t.history.push(blobURL); t.i = t.history.length - 1;
+        renderTabs(); return;
+      }
+
+      if (["mp4"].includes(ext)) {
+        if (t.iframe) t.iframe.style.display = "none";
+        const oldVid = document.querySelector(`video[data-tab="${t.id}"]`); if (oldVid) oldVid.remove();
+
+        const vid = document.createElement("video");
+        vid.src = blobURL; vid.dataset.tab = t.id; vid.controls = true;
+        vid.style.cssText = "position:absolute; inset:0; width:100%; height:100%; object-fit:contain; background:#000;";
+        webArea.appendChild(vid);
+
+        t.url = blobURL; t.title = file.name; t.favicon = ""; addr.value = file.name;
+        t.history.push(blobURL); t.i = t.history.length - 1;
+        renderTabs(); return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = evt => {
+        const html = evt.target.result;
+        const blob = new Blob([html], { type: "text/html" });
+        const htmlURL = URL.createObjectURL(blob);
+
+        t.url = htmlURL; t.title = file.name; t.favicon = ""; addr.value = file.name;
+        t.history.push(htmlURL); t.i = t.history.length - 1;
+        if (t.iframe) t.iframe.src = htmlURL;
+        renderTabs();
+      };
+      reader.readAsText(file);
+    };
+  }
+
+  /* ============================
+     Bookmarks Manager Tab
+     ============================ */
+  if ($('openBookmarksManagerBtn')) {
+    $('openBookmarksManagerBtn').onclick = openBookmarksManager;
+  }
+
+  function openBookmarksManager() {
+    createTab('', true);
+    const t = getTab(activeTabId);
+    t.isManager = true;
+    t.title = 'Bookmarks Manager';
+    renderTabs();
+    renderManager(t);
+  }
+
+  function renderManager(tab) {
+    document.querySelectorAll('.bm-manager').forEach(el => el.remove());
+    if (tab.iframe) tab.iframe.style.display = 'none';
+
+    const wrap = document.createElement('div');
+    wrap.className = 'bm-manager';
+    wrap.style.cssText = 'position:absolute; inset:0; padding:20px; overflow:auto; background:linear-gradient(180deg, rgba(6,10,15,0.98), rgba(7,11,17,0.98)); color:#fff;';
+
+    wrap.innerHTML = `
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+        <h1 style="margin:0;font-size:18px">Bookmarks Manager for rizzlers</h1>
+        <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
+          <input id="bmSearch" placeholder="Search bookmarks" style="padding:6px 10px;border-radius:8px;border:0;background:var(--tab);color:#fff;min-width:180px"/>
+          <button id="bmNew" style="padding:6px 10px;border-radius:8px;border:0;background:var(--tab);cursor:pointer;color:#fff">New</button>
+          <button id="bmImportBtn" style="padding:6px 10px;border-radius:8px;border:0;background:var(--tab);cursor:pointer;color:#fff">Import</button>
+          <button id="bmExportBtn" style="padding:6px 10px;border-radius:8px;border:0;background:var(--tab);cursor:pointer;color:#fff">Export</button>
+          <button id="bmClearAll" style="padding:6px 10px;border-radius:8px;border:0;background:#8b2;cursor:pointer;color:#fff">Clear</button>
+        </div>
+      </div>
+      <div id="bmList" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px;"></div>
+      <input type="file" id="bmImportFile" accept=".vav" style="display:none" />
+    `;
+
+    webArea.appendChild(wrap);
+
+    const bmSearch = wrap.querySelector('#bmSearch');
+    const bmList = wrap.querySelector('#bmList');
+    const bmNew = wrap.querySelector('#bmNew');
+    const bmExportBtn = wrap.querySelector('#bmExportBtn');
+    const bmImportBtn = wrap.querySelector('#bmImportBtn');
+    const bmImportFile = wrap.querySelector('#bmImportFile');
+    const bmClearAll = wrap.querySelector('#bmClearAll');
+
+    function loadBookmarks() { return JSON.parse(localStorage.getItem(STORAGE.BOOK) || '[]'); }
+    function saveBookmarks(arr) { localStorage.setItem(STORAGE.BOOK, JSON.stringify(arr)); renderPanels(); }
+
+    function renderList(filter = '') {
+      const b = loadBookmarks();
+      const q = filter.trim().toLowerCase();
+      bmList.innerHTML = '';
+      if (b.length === 0) {
+        bmList.innerHTML = `<div style="grid-column:1/-1;padding:20px;background:var(--tab);border-radius:8px;color:var(--muted)">No bookmarks yet. Click "New" to add one or import a JSON file.</div>`;
+        return;
+      }
+      b.forEach((item, idx) => {
+        if (q && !(item.u + ' ' + (item.title || '') + ' ' + (item.tag || '')).toLowerCase().includes(q)) return;
+        const card = document.createElement('div');
+        card.style.cssText = 'background:var(--tab); padding:12px; border-radius:10px; display:flex; flex-direction:column; gap:8px;';
+        card.innerHTML = `
+          <div style="display:flex;gap:8px;align-items:center">
+            <img src="${faviconFor(item.u)}" style="width:20px;height:20px;border-radius:4px;flex:0 0 20px" onerror="this.style.display='none'"/>
+            <div style="flex:1;overflow:hidden">
+              <div style="font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${item.title || new URL(item.u).hostname}</div>
+              <div style="font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${item.u}</div>
+            </div>
+          </div>
+          <div style="display:flex;gap:6px;align-items:center">
+            <button data-idx="${idx}" data-action="open" style="flex:1;padding:6px;border-radius:8px;border:0;background:var(--active-tab);cursor:pointer;color:#fff">Open</button>
+            <button data-idx="${idx}" data-action="openNew" style="padding:6px;border-radius:8px;border:0;background:var(--tab);cursor:pointer;color:#fff">↗</button>
+            <button data-idx="${idx}" data-action="edit" style="padding:6px;border-radius:8px;border:0;background:var(--tab);cursor:pointer;color:#fff">✎</button>
+            <button data-idx="${idx}" data-action="del" style="padding:6px;border-radius:8px;border:0;background:#b33;cursor:pointer;color:#fff">🗑</button>
+          </div>
+          <div style="display:flex;gap:6px;align-items:center">
+            <input data-idx="${idx}" data-action="tag" placeholder="tag / folder" value="${item.tag || ''}" style="padding:6px;border-radius:8px;border:0;background:rgba(255,255,255,0.03);color:#fff;flex:1" />
+          </div>
+        `;
+        bmList.appendChild(card);
+      });
+    }
+
+    renderList('');
+
+    bmSearch.addEventListener('input', e => renderList(e.target.value));
+    bmSearch.addEventListener('keydown', e => { if (e.key === 'Escape') { e.target.value = ''; renderList(''); } });
+
+    bmNew.onclick = () => {
+      const url = prompt('Enter URL for new bookmark (include https:// if needed):', 'https://');
+      if (!url) return;
+      let title = prompt('Optional: title for this bookmark', '');
+      const arr = loadBookmarks();
+      arr.unshift({ u: url, ts: Date.now(), title: title || url, tag: '' });
+      saveBookmarks(arr);
+      renderList(bmSearch.value);
+    };
+
+    bmList.addEventListener('click', (e) => {
+      const btn = e.target.closest('button');
+      if (!btn) return;
+      const idx = Number(btn.dataset.idx);
+      const action = btn.dataset.action;
+      const arr = loadBookmarks();
+      const item = arr[idx];
+      if (!item) return;
+      if (action === 'open' || action === 'openNew') {
+        createTab(item.u, true);
+      } else if (action === 'edit') {
+        const newUrl = prompt('Edit URL:', item.u);
+        if (!newUrl) return;
+        const newTitle = prompt('Edit title:', item.title || '');
+        arr[idx].u = newUrl;
+        arr[idx].title = newTitle || newUrl;
+        saveBookmarks(arr);
+        renderList(bmSearch.value);
+      } else if (action === 'del') {
+        if (!confirm('Delete this bookmark?')) return;
+        arr.splice(idx, 1);
+        saveBookmarks(arr);
+        renderList(bmSearch.value);
+      }
+    });
+
+    bmList.addEventListener('change', (e) => {
+      const input = e.target;
+      if (input && input.dataset && input.dataset.action === 'tag') {
+        const idx = Number(input.dataset.idx);
+        const arr = loadBookmarks();
+        if (arr[idx]) {
+          arr[idx].tag = input.value;
+          saveBookmarks(arr);
+        }
+      }
+    });
+
+    bmExportBtn.onclick = () => {
+      const data = loadBookmarks();
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/.vav' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'bookmarks.vav'; document.body.appendChild(a); a.click();
+      setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 1500);
+    };
+
+    bmImportBtn.onclick = () => bmImportFile.click();
+    bmImportFile.onchange = (ev) => {
+      const f = ev.target.files && ev.target.files[0];
+      if (!f) return;
+      const r = new FileReader();
+      r.onload = (ee) => {
+        try {
+          const parsed = JSON.parse(ee.target.result);
+          if (!Array.isArray(parsed)) throw new Error('Invalid format');
+          const cur = loadBookmarks();
+          parsed.forEach(p => {
+            if (!cur.find(x => x.u === p.u)) cur.push({ u: p.u, title: p.title || p.u, ts: p.ts || Date.now(), tag: p.tag || '' });
+          });
+          saveBookmarks(cur);
+          renderList(bmSearch.value);
+          bmImportFile.value = '';
+          alert('Imported ' + parsed.length + ' bookmarks.');
+        } catch (err) {
+          alert('Import failed: ' + err.message);
+        }
+      };
+      r.readAsText(f);
+    };
+
+    bmClearAll.onclick = () => {
+      if (!confirm('Clear ALL bookmarks? This cannot be undone.')) return;
+      saveBookmarks([]);
+      renderList('');
+    };
+  }
+
+  /* ============================
+     Fullscreen Handlers
+     ============================ */
+  let isFullscreen = false;
+  let exitOverlayTimer = null;
+
+  function showExitOverlay() {
+    const el = $('exitFullscreenOverlay');
+    if (!el) return;
+    el.style.display = 'block';
+    if (exitOverlayTimer) clearTimeout(exitOverlayTimer);
+    exitOverlayTimer = setTimeout(() => { el.style.display = 'none'; exitOverlayTimer = null; }, 3500);
+  }
+
+  function hideExitOverlay() {
+    const el = $('exitFullscreenOverlay');
+    if (!el) return;
+    el.style.display = 'none';
+    if (exitOverlayTimer) { clearTimeout(exitOverlayTimer); exitOverlayTimer = null; }
+  }
+
+  async function setFullscreen(enable, useNative = false) {
+    const tabsBar = $('tabs');
+    const toolbar = document.querySelector('.toolbar');
+    const bookmarksBar = $('bookmarksBar');
+    const sidePanels = $('sidePanels');
+
+    if (enable) {
+      if (useNative && !document.fullscreenElement) {
+        try { await document.documentElement.requestFullscreen(); } catch (e) { }
+      }
+      [tabsBar, toolbar, bookmarksBar, sidePanels].forEach(el => el && el.classList.add('fullscreen-hide'));
+      webArea.classList.add('fullscreen-webview');
+      if ($('fullscreenBtn')) $('fullscreenBtn').style.background = 'rgba(255,255,255,0.1)';
+      isFullscreen = true;
+      showExitOverlay();
+    } else {
+      if (useNative && document.fullscreenElement) {
+        try { await document.exitFullscreen(); } catch (e) { }
+      }
+      [tabsBar, toolbar, bookmarksBar, sidePanels].forEach(el => el && el.classList.remove('fullscreen-hide'));
+      webArea.classList.remove('fullscreen-webview');
+      if ($('fullscreenBtn')) $('fullscreenBtn').style.background = 'none';
+      isFullscreen = false;
+      hideExitOverlay();
+    }
+  }
+
+  if ($('fullscreenBtn')) {
+    $('fullscreenBtn').onclick = () => setFullscreen(!isFullscreen, true);
+  }
+
+  if ($('exitFullscreenOverlay')) {
+    $('exitFullscreenOverlay').onclick = () => setFullscreen(false, true);
+  }
+
+  document.addEventListener('keydown', async (e) => {
+    if (e.key === 'F10') {
+      e.preventDefault();
+      setFullscreen(!isFullscreen, true);
+    } else if (e.key === 'Escape') {
+      if (document.fullscreenElement) {
+        document.exitFullscreen().catch(() => {});
+      }
+      if (isFullscreen) {
+        setFullscreen(false, true);
+      }
     }
   });
 
-  // 4. Position it directly to the left of your "Go" (▶) button
-  goBtn.parentNode.insertBefore(aiBtn, goBtn);
-})();
+  // Launch initial instance
+  createTab('', true);
+  renderPanels();
 
-// --- LIQUID GLASS FLAG INTERPOLATOR (WITH TRANSPARENT TABS) ---
-(function applyLiquidGlassFlag() {
-  const isGlassEnabled = localStorage.getItem('mc_flag_liquid_glass') === 'Enabled';
-  
-  if (isGlassEnabled) {
-    // Dynamic glass UI styling rules
-    const glassStyle = document.createElement('style');
-    glassStyle.textContent = `
-      /* Main panels, active tab, and buttons get the frosted glass treatment */
-      #tabs, .tab.active, #sidePanels, .nav-btn, #aiModeBtn {
-        background: rgba(24, 28, 36, 0.5) !important;
-        backdrop-filter: blur(16px) saturate(140%) !important;
-        -webkit-backdrop-filter: blur(16px) saturate(140%) !important;
-        border: 1px solid rgba(255, 255, 255, 0.08) !important;
-      }
-      
-      /* Inactive tabs are made completely transparent but retain a slight hover edge */
-      .tab:not(.active) {
-        background: transparent !important;
-        border: 1px solid transparent !important;
-        opacity: 0.7;
-        transition: all 0.2s ease;
-      }
-      
-      /* Subtle background tint when hovering over an inactive transparent tab */
-      .tab:not(.active):hover {
-        background: rgba(255, 255, 255, 0.05) !important;
-        opacity: 1;
-      }
-    `;
-    document.head.appendChild(glassStyle);
-  }
 })();
