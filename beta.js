@@ -751,3 +751,93 @@
   renderPanels();
 
 })();
+function initSpeechToText() {
+  const addressInput = document.getElementById('address');
+  const goBtn = document.getElementById('goBtn');
+  const statusEl = document.getElementById('status');
+
+  if (!addressInput) return;
+
+  if (!document.querySelector("link[href*='icon_names=mic']")) {
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = 'https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&icon_names=mic';
+    document.head.appendChild(link);
+  }
+
+  const micBtn = document.createElement('span');
+  micBtn.id = 'micBtn';
+  micBtn.className = 'material-symbols-outlined';
+  micBtn.innerText = 'mic';
+  micBtn.title = 'Search with your voice';
+  
+  micBtn.style.cssText = 'cursor:pointer; padding:0 6px; opacity:0.6; font-size:22px; transition:opacity 0.18s, transform 0.18s, color 0.18s; user-select:none; display:inline-flex; align-items:center;';
+
+  micBtn.addEventListener('mouseenter', () => { 
+    micBtn.style.opacity = '1'; 
+    micBtn.style.transform = 'scale(1.08)'; 
+  });
+  micBtn.addEventListener('mouseleave', () => { 
+    micBtn.style.opacity = '0.6'; 
+    micBtn.style.transform = 'scale(1)'; 
+  });
+
+  addressInput.parentNode.insertBefore(micBtn, addressInput.nextSibling);
+
+  if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const recognition = new SpeechRecognition();
+
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.lang = 'en-US';
+
+    let isListening = false;
+
+    micBtn.addEventListener('click', () => {
+      if (isListening) recognition.stop(); else recognition.start();
+    });
+
+    recognition.onstart = () => {
+      isListening = true;
+      micBtn.style.color = '#ef5350';
+      micBtn.style.opacity = '1';
+      addressInput.value = '';
+      addressInput.placeholder = 'Listening...';
+      if (statusEl) statusEl.textContent = "Listening to voice input...";
+      // Notification Hook: Voice Start
+      if(typeof window.showOSNotification === 'function') {
+        window.showOSNotification('Voice Engine Active', 'Listening to structural audio input...', 'mic');
+      }
+    };
+
+    recognition.onend = () => {
+      isListening = false;
+      micBtn.style.color = '';
+      micBtn.style.opacity = '0.6';
+      addressInput.placeholder = 'Search or type URL';
+    };
+
+    recognition.onresult = (event) => {
+      const voiceResult = event.results[0][0].transcript;
+      addressInput.value = voiceResult;
+      if (statusEl) statusEl.textContent = "Searching for: " + voiceResult;
+      // Notification Hook: Voice Processed Result
+      if(typeof window.showOSNotification === 'function') {
+        window.showOSNotification('Speech Processed', `Searching for: "${voiceResult}"`, 'record_voice_over');
+      }
+      setTimeout(() => { if (goBtn) goBtn.click(); }, 500);
+    };
+
+    recognition.onerror = (event) => {
+      console.error("Speech Recognition Error: ", event.error);
+      if (statusEl) statusEl.textContent = "Voice Search Error: " + event.error;
+      // Notification Hook: Voice Exception Fault
+      if(typeof window.showOSNotification === 'function') {
+        window.showOSNotification('Voice Engine Error', event.error, 'error');
+      }
+    };
+  } else {
+    micBtn.style.display = 'none';
+  }
+}
