@@ -1,16 +1,86 @@
 /* ============================================================
-   vav4.2 Engine Script (Compatible with vavbrowser.html)
+   vav4.2 Engine Script for vavbrowser.html
    Coded By Rocco Beban
    ============================================================ */
 
 (function () {
-  // Inject additional UI elements into vavbrowser DOM if missing
+  const STORAGE = { BOOK: 'mc_bmk', HIST: 'mc_hist' };
+
+  // 1. Inject required CSS styles directly into <head>
+  function injectStyles() {
+    if (document.getElementById('vav-dynamic-styles')) return;
+    const style = document.createElement('style');
+    style.id = 'vav-dynamic-styles';
+    style.textContent = `
+      .bookmarks-bar {
+        background: var(--toolbar);
+        height: 32px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 8px;
+        border-bottom: 1px solid rgba(255,255,255,0.06);
+        white-space: nowrap;
+        overflow-x: auto;
+        transition: height 0.3s ease, padding 0.3s ease, opacity 0.3s ease;
+        box-sizing: border-box;
+      }
+      .bookmarks-bar.hidden {
+        height: 0 !important;
+        padding-top: 0 !important;
+        padding-bottom: 0 !important;
+        border-bottom: none !important;
+        overflow: hidden !important;
+        opacity: 0;
+        pointer-events: none;
+      }
+      .bm-btn {
+        display: flex;
+        align-items: center;
+        background: var(--tab);
+        padding: 4px 10px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 13px;
+        color: var(--muted);
+        user-select: none;
+        transition: background var(--transition, 0.18s), color var(--transition, 0.18s);
+      }
+      .bm-btn:hover {
+        background: var(--active-tab);
+        color: #fff;
+      }
+      .bm-btn img {
+        width: 16px;
+        height: 16px;
+        margin-right: 6px;
+        border-radius: 3px;
+      }
+      .fullscreen-hide {
+        display: none !important;
+      }
+      .fullscreen-webview {
+        position: absolute !important;
+        inset: 0 !important;
+        z-index: 9999 !important;
+      }
+      .bm-manager, iframe.webview, img[data-tab], video[data-tab], audio[data-tab] {
+        position: relative;
+        z-index: auto;
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  // 2. Inject missing DOM elements into vavbrowser.html
   function setupDOMStructure() {
+    injectStyles();
+
     const toolbar = document.querySelector('.toolbar');
     const sidePanels = document.getElementById('sidePanels');
     const content = document.querySelector('.content');
 
-    // 1. Add missing toolbar buttons dynamically
+    // Add missing toolbar controls
     if (toolbar && !document.getElementById('toggleBookmarksBar')) {
       const goBtn = document.getElementById('goBtn');
 
@@ -19,7 +89,7 @@
       toggleBMBar.id = 'toggleBookmarksBar';
       toggleBMBar.title = 'Toggle Bookmarks Bar';
       toggleBMBar.textContent = '⬍';
-      toolbar.insertBefore(toggleBMBar, goBtn.nextSibling);
+      toolbar.insertBefore(toggleBMBar, goBtn ? goBtn.nextSibling : null);
 
       const openFileBtn = document.createElement('div');
       openFileBtn.className = 'btn';
@@ -36,20 +106,15 @@
       toolbar.appendChild(fileInput);
     }
 
-    // 2. Add Bookmarks Bar beneath Toolbar
-    if (!document.getElementById('bookmarksBar')) {
+    // Add Bookmarks Bar element beneath Toolbar
+    if (!document.getElementById('bookmarksBar') && content) {
       const bmBar = document.createElement('div');
       bmBar.className = 'bookmarks-bar';
       bmBar.id = 'bookmarksBar';
-      bmBar.style.cssText = `
-        background:var(--toolbar); height:32px; display:flex; align-items:center;
-        gap:6px; padding:4px 8px; border-bottom:1px solid rgba(255,255,255,0.06);
-        white-space:nowrap; overflow-x:auto; transition:height 0.67s ease, padding 0.67s ease;
-      `;
       content.parentNode.insertBefore(bmBar, content);
     }
 
-    // 3. Add Exit Fullscreen Overlay
+    // Add Exit Fullscreen Overlay
     if (!document.getElementById('exitFullscreenOverlay')) {
       const overlay = document.createElement('div');
       overlay.id = 'exitFullscreenOverlay';
@@ -63,7 +128,7 @@
       document.body.appendChild(overlay);
     }
 
-    // 4. Update Side Panel Header controls
+    // Configure Side Panel HTML
     if (sidePanels) {
       sidePanels.innerHTML = `
         <div class="btn" id="fullscreenBtn" style="margin:8px">▶</div>
@@ -85,11 +150,10 @@
   setupDOMStructure();
 
   /* ============================
-     Core state & helpers
+     Core State & Helpers
      ============================ */
   const $ = id => document.getElementById(id);
   let tabs = [], activeTabId = null, nextTabId = 1;
-  const STORAGE = { BOOK: 'mc_bmk', HIST: 'mc_hist' };
 
   const searchSel = $('searchEngine'), addr = $('address'), status = $('status'), webArea = $('webviewArea'), loading = $('loadingBar');
   const bookmarksEl = $('bookmarksList'), historyEl = $('historyList'), addrFav = $('addrFavicon');
@@ -108,7 +172,7 @@
   }
 
   /* ============================
-     Tabs: create, render, manage
+     Tabs Engine
      ============================ */
   function createTab(url = '', activate = true) {
     const id = 't' + (nextTabId++);
@@ -220,19 +284,19 @@
   }
 
   /* ============================
-     Navigation + history
+     Navigation & History
      ============================ */
   function nav(raw) {
     const t = getTab(activeTabId); if (!t) return;
     let u = raw.trim(); if (!u) return;
     if (/\s/.test(u) || !u.includes('.')) u = searchSel.value + encodeURIComponent(u);
     else if (!/^https?:\/\//.test(u)) u = 'https://' + u;
-    
+
     t.history = t.history.slice(0, t.i + 1);
     t.history.push(u); t.i = t.history.length - 1;
     t.url = u; addr.value = u; t.favicon = faviconFor(u);
     if (t.favicon) { addrFav.src = t.favicon; addrFav.style.display = 'inline-block'; }
-    
+
     if (loading) loading.style.width = '40%';
     if (status) status.textContent = 'Loading...';
     renderWeb(); pushHist(u);
@@ -246,9 +310,10 @@
   }
 
   /* ============================
-     Bookmarks + panels
+     Bookmarks & Panels Engine
      ============================ */
   function addBmk(u) {
+    if (!u) return;
     const b = JSON.parse(localStorage.getItem(STORAGE.BOOK) || '[]');
     if (!b.find(x => x.u === u)) {
       b.unshift({ u, ts: Date.now() });
@@ -284,21 +349,30 @@
   function renderBookmarksBar() {
     const bookmarksBar = $('bookmarksBar');
     if (!bookmarksBar) return;
+
     const b = JSON.parse(localStorage.getItem(STORAGE.BOOK) || '[]');
     bookmarksBar.innerHTML = '';
+
+    if (b.length === 0) {
+      const emptyHint = document.createElement('span');
+      emptyHint.style.cssText = 'color:var(--muted); font-size:12px; padding:0 4px;';
+      emptyHint.textContent = 'No bookmarks yet (Click ☆ to bookmark a site)';
+      bookmarksBar.appendChild(emptyHint);
+      return;
+    }
+
     b.forEach(x => {
       const btn = document.createElement('div');
       btn.className = 'bm-btn';
-      btn.style.cssText = 'display:flex; align-items:center; background:var(--tab); padding:4px 10px; border-radius:6px; cursor:pointer; font-size:13px; color:var(--muted);';
-      
+
       const icon = document.createElement('img');
       icon.src = faviconFor(x.u);
-      icon.style.cssText = 'width:16px; height:16px; margin-right:6px;';
+      icon.onerror = () => { icon.style.display = 'none'; };
       btn.appendChild(icon);
 
       const label = document.createElement('span');
       try {
-        label.textContent = new URL(x.u).hostname.replace('www.', '');
+        label.textContent = x.title || new URL(x.u).hostname.replace('www.', '');
       } catch (err) {
         label.textContent = x.u;
       }
@@ -310,7 +384,7 @@
   }
 
   /* ============================
-     UI Event Wiring
+     UI Control Handlers
      ============================ */
   $('goBtn').onclick = () => nav(addr.value);
   addr.onkeydown = e => { if (e.key === 'Enter') nav(addr.value); };
@@ -339,7 +413,10 @@
   };
 
   if ($('toggleBookmarksBar')) {
-    $('toggleBookmarksBar').onclick = () => { $('bookmarksBar').classList.toggle('hidden'); };
+    $('toggleBookmarksBar').onclick = () => {
+      const bmBar = $('bookmarksBar');
+      if (bmBar) bmBar.classList.toggle('hidden');
+    };
   }
   if ($('clearHistoryBtn')) {
     $('clearHistoryBtn').onclick = () => { localStorage.setItem(STORAGE.HIST, '[]'); renderPanels(); };
@@ -349,7 +426,7 @@
   }
 
   /* ============================
-     FILE LOADING MECHANISM
+     Local File Viewer
      ============================ */
   const fileInput = $('openFile');
   if ($('openFileBtn') && fileInput) {
@@ -421,7 +498,7 @@
   }
 
   /* ============================
-     Bookmarks Manager Tab
+     Bookmarks Manager Module
      ============================ */
   if ($('openBookmarksManagerBtn')) {
     $('openBookmarksManagerBtn').onclick = openBookmarksManager;
@@ -600,7 +677,7 @@
   }
 
   /* ============================
-     Fullscreen Handlers
+     Fullscreen System
      ============================ */
   let isFullscreen = false;
   let exitOverlayTimer = null;
@@ -669,7 +746,7 @@
     }
   });
 
-  // Launch initial instance
+  // Launch initial tab & render panels/bookmarks bar
   createTab('', true);
   renderPanels();
 
