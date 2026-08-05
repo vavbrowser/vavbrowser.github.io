@@ -61,24 +61,17 @@
   to { display: block !important; opacity: 1 !important; visibility: visible !important; }
 }
 
+.fullscreen-hide {
+  display: none !important;
+}
 .fullscreen-webview {
   position: fixed !important;
   inset: 0 !important;
   z-index: 2147483647 !important;
-  overlay: top !important;
   
-  /* CRITICAL: Forces your element to capture all clicks and hover triggers */
-  pointer-events: auto !important; 
+  /* Forces the element into the browser's official Top Layer */
+  overlay: top !important; 
 }
-
-/* When fullscreen mode is active, completely disable the iframe's layers */
-.fullscreen-active iframe, 
-iframe.webview {
-  pointer-events: none !important; /* Prevents the iframe from stealing mouse focus */
-  z-index: -1 !important;          /* Pushes it visually below everything else */
-}
-
-
 .bm-manager, iframe.webview, img[data-tab], video[data-tab], audio[data-tab] {
   position: relative;
   z-index: auto;
