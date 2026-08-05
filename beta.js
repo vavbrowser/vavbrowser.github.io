@@ -65,10 +65,20 @@
   position: fixed !important;
   inset: 0 !important;
   z-index: 2147483647 !important;
+  overlay: top !important;
   
-  /* Forces the element to stay visible forever */
-  animation: forceShow 1s infinite !important; 
+  /* CRITICAL: Forces your element to capture all clicks and hover triggers */
+  pointer-events: auto !important; 
 }
+
+/* When fullscreen mode is active, completely disable the iframe's layers */
+.fullscreen-active iframe, 
+iframe.webview {
+  pointer-events: none !important; /* Prevents the iframe from stealing mouse focus */
+  z-index: -1 !important;          /* Pushes it visually below everything else */
+}
+
+
 .bm-manager, iframe.webview, img[data-tab], video[data-tab], audio[data-tab] {
   position: relative;
   z-index: auto;
