@@ -57,17 +57,20 @@
         border-radius: 3px;
       }
       .fullscreen-hide {
-        display: none !important;
-      }
-      .fullscreen-webview {
-        position: absolute !important;
-        inset: 0 !important;
-        z-index: 9999 !important;
-      }
-      .bm-manager, iframe.webview, img[data-tab], video[data-tab], audio[data-tab] {
-        position: relative;
-        z-index: auto;
-      }
+  display: none !important;
+}
+.fullscreen-webview {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 2147483647 !important;
+  
+  /* Forces the element into the browser's official Top Layer */
+  overlay: top !important; 
+}
+.bm-manager, iframe.webview, img[data-tab], video[data-tab], audio[data-tab] {
+  position: relative;
+  z-index: auto;
+}
     `;
     document.head.appendChild(style);
   }
