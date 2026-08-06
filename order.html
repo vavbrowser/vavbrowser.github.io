@@ -365,7 +365,7 @@
             color: #555;
         }
 
-        .form-group input {
+        .form-group input, .form-group select {
             width: 100%;
             padding: 0.6rem;
             border: 1px solid #ccc;
@@ -381,7 +381,7 @@
             color: #aaa;
             margin-top: 3rem;
         }
-      /* Search Bar Styles */
+        /* Search Bar Styles */
         .search-container {
             display: flex;
             align-items: center;
@@ -416,7 +416,30 @@
             transform: scale(1.1);
         }
 
-        /* Adjust header for mobile screens */
+        /* Options Selector Styling */
+        .option-pills {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            margin: 0.8rem 0;
+        }
+
+        .option-pill {
+            padding: 0.5rem 1rem;
+            border: 2px solid #ccc;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 0.9rem;
+            background: #f8f9fa;
+        }
+
+        .option-pill.active {
+            border-color: #2ec4b6;
+            background: #e8fcc2;
+            color: #1a1a2e;
+        }
+
         @media (max-width: 768px) {
             header {
                 flex-direction: column;
@@ -428,7 +451,7 @@
                 margin: 0;
             }
         }
-      /* Make ONLY the Product Info Modal full screen */
+
         #productModal .modal-menu {
             width: 100%;
             max-width: 100vw;
@@ -438,19 +461,17 @@
             padding: 2rem;
         }
 
-        /* Keep the content centered and readable on large monitors */
         #productModalContent {
             max-width: 800px;
             margin: 0 auto;
             padding-top: 1rem;
         }
 
-        /* Make the close button slightly larger and easier to tap on full screen */
         #productModal .close-btn {
             top: 20px;
             right: 30px;
             font-size: 2rem;
-            position: fixed; /* Keeps the X in the top right even if they scroll */
+            position: fixed;
             z-index: 10;
             background: white;
             border-radius: 50%;
@@ -475,7 +496,7 @@
 
        <nav>
             <a onclick="filterCategory('all')">Home</a>
-            <a onclick="filterCategory('freebies')">avalable now</a>
+            <a onclick="filterCategory('freebies')">Freebies</a>
             <a onclick="filterCategory('preorders')">Pre-Orders</a>
             <a onclick="openCartModal()">Cart <span id="cartNavCount" class="cart-badge">0</span></a>
         </nav>
@@ -504,6 +525,22 @@
         <div class="modal-menu">
             <span class="close-btn" onclick="closeProductModal()">&times;</span>
             <div id="productModalContent"></div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="storageModal">
+        <div class="modal-menu">
+            <span class="close-btn" onclick="closeStorageModal()">&times;</span>
+            <h3 class="modal-title">Select Storage Option</h3>
+            <p style="margin-bottom: 1rem; color: #666;" id="storageModalSubtext">Choose a capacity for your device:</p>
+            
+            <div class="form-group">
+                <label for="storageSelect"><strong>Storage Capacity:</strong></label>
+                <select id="storageSelect">
+                    </select>
+            </div>
+            
+            <button class="btn" style="margin-top: 1rem;" id="confirmStorageBtn">Confirm & Add to Cart</button>
         </div>
     </div>
 
@@ -571,16 +608,14 @@
         // Initialize Firebase
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
-      // Product Catalog Data loaded dynamically from Firebase
+
         let products = [];
-
-        // Shopping Cart Object { productId: quantity }
+        // Shopping Cart map using key format: `${productId}_${selectedStorage}`
         let cart = {};
-
-        // Track the currently selected category
         let currentCategory = 'all';
+        let pendingStorageProductId = null;
 
-        // Real-time listener for Firebase 'products' node
+        // Fetch products real-time
         function listenToFirebaseProducts() {
             database.ref('products').on('value', (snapshot) => {
                 const data = snapshot.val();
@@ -599,19 +634,37 @@
             });
         }
 
-        // Render Product Cards Dynamically
-        function renderProducts() {
+        function renderProducts(searchQuery = '') {
             const productGrid = document.getElementById('productGrid');
             productGrid.innerHTML = '';
 
-            products.forEach(product => {
+            let filteredProducts = products;
+
+            if (currentCategory === 'freebies') {
+                filteredProducts = filteredProducts.filter(p => !p.isPreOrder);
+            } else if (currentCategory === 'preorders') {
+                filteredProducts = filteredProducts.filter(p => p.isPreOrder);
+            }
+
+            if (searchQuery.trim() !== '') {
+                filteredProducts = filteredProducts.filter(product => 
+                    product.name.toLowerCase().includes(searchQuery.toLowerCase())
+                );
+            }
+
+            if (filteredProducts.length === 0) {
+                productGrid.innerHTML = '<p style="text-align:center; grid-column: 1/-1; font-size: 1.2rem;">No products found in this category. 🕵️‍♂️</p>';
+                return;
+            }
+
+            filteredProducts.forEach(product => {
                 const isOutOfStock = product.stock <= 0;
                 const isPreOrder = product.isPreOrder || false;
                 const card = document.createElement('div');
                 card.className = 'card';
 
                 card.innerHTML = `
-                   <img src="${product.image}" alt="${product.name}" style="width:100%; height: 40vh; min-height: 250px; object-fit: cover; border-radius: 12px; margin-bottom: 1.5rem; background-color: #e0e0e0;">
+                   <img src="${product.image}" alt="${product.name}" onclick="openProductModal(${product.id})">
                     <div class="card-content">
                         <h4 class="card-title">${product.name}</h4>
                         <div class="card-price-row">
@@ -627,7 +680,7 @@
                             <button class="btn-secondary" onclick="openProductModal(${product.id})">ℹ️ Details</button>
                             <button 
                                 class="btn ${isPreOrder ? 'btn-preorder' : ''}" 
-                                onclick="addToCart(${product.id})" 
+                                onclick="handleAddToCartClick(${product.id})" 
                                 ${isOutOfStock ? 'disabled' : ''}>
                                 ${isOutOfStock ? 'Sold Out' : (isPreOrder ? 'Pre-Order' : 'Add to Cart')}
                             </button>
@@ -638,14 +691,106 @@
             });
         }
 
-        // Product Info Modal Controls
+        // Handles storage check before adding to cart
+        function handleAddToCartClick(productId) {
+            const product = products.find(p => p.id === productId);
+            if (!product || product.stock <= 0) return;
+
+            // Check if storage options exist in Firebase
+            const hasStorage = product.hasStorageOptions === true || product.storageOptions === true || Array.isArray(product.storageOptions);
+
+            if (hasStorage) {
+                openStorageModal(product);
+            } else {
+                addToCart(productId, 'Standard');
+            }
+        }
+
+        // Open Storage Selection Modal
+        function openStorageModal(product) {
+            pendingStorageProductId = product.id;
+            const selectEl = document.getElementById('storageSelect');
+            const subtextEl = document.getElementById('storageModalSubtext');
+            selectEl.innerHTML = '';
+
+            subtextEl.innerText = `Choose storage capacity for "${product.name}":`;
+
+            // Use array from Firebase if provided, otherwise default choices
+            let options = ['128GB', '256GB', '512GB', '1TB'];
+            if (Array.isArray(product.storageOptions) && product.storageOptions.length > 0) {
+                options = product.storageOptions;
+            }
+
+            options.forEach(opt => {
+                const optionEl = document.createElement('option');
+                optionEl.value = opt;
+                optionEl.innerText = opt;
+                selectEl.appendChild(optionEl);
+            });
+
+            document.getElementById('confirmStorageBtn').onclick = function() {
+                const selectedStorage = selectEl.value;
+                addToCart(pendingStorageProductId, selectedStorage);
+                closeStorageModal();
+            };
+
+            document.getElementById('storageModal').style.display = 'flex';
+        }
+
+        function closeStorageModal() {
+            document.getElementById('storageModal').style.display = 'none';
+            pendingStorageProductId = null;
+        }
+
+        // Add Product to Cart with Storage Option
+        function addToCart(productId, storageOption = 'Standard') {
+            const product = products.find(p => p.id === productId);
+            if (!product || product.stock <= 0) return;
+
+            const cartKey = `${productId}_${storageOption}`;
+            
+            // Count total current items for this product ID in cart
+            const currentTotalInCart = Object.keys(cart)
+                .filter(k => k.startsWith(`${productId}_`))
+                .reduce((sum, k) => sum + cart[k], 0);
+
+            if (currentTotalInCart >= product.stock) {
+                alert(`Only ${product.stock} units available!`);
+                return;
+            }
+
+            cart[cartKey] = (cart[cartKey] || 0) + 1;
+            updateCartNavCount();
+            
+            const storageTag = storageOption !== 'Standard' ? ` (${storageOption})` : '';
+            alert(`Added "${product.name}${storageTag}" to cart!`);
+        }
+
         function openProductModal(productId) {
             const product = products.find(p => p.id === productId);
             if (!product) return;
 
             const isOutOfStock = product.stock <= 0;
             const isPreOrder = product.isPreOrder || false;
+            const hasStorage = product.hasStorageOptions === true || product.storageOptions === true || Array.isArray(product.storageOptions);
             const modalContent = document.getElementById('productModalContent');
+
+            let storageSelectorHTML = '';
+            if (hasStorage) {
+                let options = ['128GB', '256GB', '512GB', '1TB'];
+                if (Array.isArray(product.storageOptions) && product.storageOptions.length > 0) {
+                    options = product.storageOptions;
+                }
+                
+                storageSelectorHTML = `
+                    <div class="form-group" style="margin-top: 1rem;">
+                        <label><strong>Select Storage Capacity:</strong></label>
+                        <select id="modalStorageSelect">
+                            ${options.map(opt => `<option value="${opt}">${opt}</option>`).join('')}
+                        </select>
+                    </div>
+                `;
+            }
 
             modalContent.innerHTML = `
                 <img src="${product.image}" alt="${product.name}" style="width:100%; height: 220px; object-fit: cover; border-radius: 8px; margin-bottom: 1rem; background-color: #e0e0e0;">
@@ -659,15 +804,19 @@
                 <p class="stock-tag ${isOutOfStock ? 'out-of-stock' : (isPreOrder ? 'pre-order' : '')}" style="margin-bottom: 1rem;">
                     ${isOutOfStock ? '❌ Sold Out' : (isPreOrder ? `🚀 Pre-Order Available (${product.stock} left)` : `📦 Current Stock: ${product.stock} units`)}
                 </p>
-                <div style="background: #f8f9fa; padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem; font-size: 0.95rem; line-height: 1.5;">
+                <div style="background: #f8f9fa; padding: 1rem; border-radius: 8px; margin-bottom: 1rem; font-size: 0.95rem; line-height: 1.5;">
                     <strong>Product Details:</strong>
                     <p style="margin-top: 0.4rem; color: #555;">
                         ${product.description ? product.description : 'No detailed description available for this item yet.'}
                     </p>
                 </div>
+
+                ${storageSelectorHTML}
+
                 <button 
                     class="btn ${isPreOrder ? 'btn-preorder' : ''}" 
-                    onclick="addToCart(${product.id}); closeProductModal();" 
+                    style="margin-top: 1rem;"
+                    onclick="confirmModalAddToCart(${product.id},${hasStorage})" 
                     ${isOutOfStock ? 'disabled' : ''}>
                     ${isOutOfStock ? 'Sold Out' : (isPreOrder ? 'Pre-Order Now' : 'Add to Cart')}
                 </button>
@@ -676,33 +825,25 @@
             document.getElementById('productModal').style.display = 'flex';
         }
 
+        function confirmModalAddToCart(productId, hasStorage) {
+            let storageOpt = 'Standard';
+            if (hasStorage) {
+                const selectEl = document.getElementById('modalStorageSelect');
+                if (selectEl) storageOpt = selectEl.value;
+            }
+            addToCart(productId, storageOpt);
+            closeProductModal();
+        }
+
         function closeProductModal() {
             document.getElementById('productModal').style.display = 'none';
         }
 
-        // Add Product to Shopping Cart
-        function addToCart(productId) {
-            const product = products.find(p => p.id === productId);
-            if (!product || product.stock <= 0) return;
-
-            const currentInCart = cart[productId] || 0;
-            if (currentInCart >= product.stock) {
-                alert(`Only ${product.stock} units available!`);
-                return;
-            }
-
-            cart[productId] = currentInCart + 1;
-            updateCartNavCount();
-            alert(`Added "${product.name}" to cart!`);
-        }
-
-        // Update Nav Cart Counter
         function updateCartNavCount() {
             const totalItems = Object.values(cart).reduce((sum, qty) => sum + qty, 0);
             document.getElementById('cartNavCount').innerText = totalItems;
         }
 
-        // Cart Modal Controls
         function openCartModal() {
             renderCartContent();
             document.getElementById('cartModal').style.display = 'flex';
@@ -725,34 +866,38 @@
             document.getElementById('checkoutModal').style.display = 'none';
         }
 
-        // Render Cart Modal View
         function renderCartContent() {
             const cartContent = document.getElementById('cartContent');
             const cartFooter = document.getElementById('cartFooter');
-            const itemIds = Object.keys(cart).map(Number);
+            const cartKeys = Object.keys(cart);
 
-            if (itemIds.length === 0) {
+            if (cartKeys.length === 0) {
                 cartContent.innerHTML = '<p class="empty-cart-msg">Your cart is currently empty.</p>';
                 cartFooter.style.display = 'none';
                 return;
             }
 
             let html = '<ul class="cart-list">';
-            itemIds.forEach(id => {
-                const qty = cart[id];
+            cartKeys.forEach(key => {
+                const [idStr, storageOption] = key.split('_');
+                const id = Number(idStr);
+                const qty = cart[key];
                 const product = products.find(p => p.id === id);
+
                 if (product && qty > 0) {
                     const tag = product.isPreOrder ? ' <small style="color:#0284c7;">(Pre-order)</small>' : '';
+                    const storageDisplay = storageOption !== 'Standard' ? ` 💾 <strong>${storageOption}</strong>` : '';
+                    
                     html += `
                         <li class="cart-item">
                             <div class="cart-item-info">
-                                <span class="cart-item-title">${product.name}${tag}</span>
+                                <span class="cart-item-title">${product.name}${storageDisplay}${tag}</span>
                                 <span class="cart-item-price">$0.00</span>
                             </div>
                             <div class="cart-controls">
-                                <button class="cart-qty-btn" onclick="changeQty(${product.id}, -1)">-</button>
+                                <button class="cart-qty-btn" onclick="changeQty('${key}', -1)">-</button>
                                 <span>${qty}</span>
-                                <button class="cart-qty-btn" onclick="changeQty(${product.id}, 1)">+</button>
+                                <button class="cart-qty-btn" onclick="changeQty('${key}', 1)">+</button>
                             </div>
                         </li>
                     `;
@@ -764,40 +909,46 @@
             cartFooter.style.display = 'block';
         }
 
-        // Adjust Quantity in Cart
-        function changeQty(productId, delta) {
+        function changeQty(cartKey, delta) {
+            const [idStr] = cartKey.split('_');
+            const productId = Number(idStr);
             const product = products.find(p => p.id === productId);
             if (!product) return;
 
-            const currentQty = cart[productId] || 0;
+            const currentQty = cart[cartKey] || 0;
             const newQty = currentQty + delta;
 
-            if (delta > 0 && newQty > product.stock) {
+            const currentTotalInCart = Object.keys(cart)
+                .filter(k => k.startsWith(`${productId}_`))
+                .reduce((sum, k) => sum + cart[k], 0);
+
+            if (delta > 0 && currentTotalInCart >= product.stock) {
                 alert(`Cannot add more. Max stock available: ${product.stock}`);
                 return;
             }
 
             if (newQty <= 0) {
-                delete cart[productId];
+                delete cart[cartKey];
             } else {
-                cart[productId] = newQty;
+                cart[cartKey] = newQty;
             }
 
             updateCartNavCount();
             renderCartContent();
         }
 
-        // Render Checkout Order Summary
         function renderCheckoutSummary() {
             const checkoutSummary = document.getElementById('checkoutSummary');
             let summaryHTML = '<strong>Order Summary:</strong><ul style="margin-top: 0.5rem; padding-left: 1.2rem;">';
 
-            Object.keys(cart).forEach(id => {
-                const product = products.find(p => p.id === Number(id));
-                const qty = cart[id];
+            Object.keys(cart).forEach(key => {
+                const [idStr, storageOption] = key.split('_');
+                const product = products.find(p => p.id === Number(idStr));
+                const qty = cart[key];
                 if (product) {
                     const tag = product.isPreOrder ? ' [PRE-ORDER]' : '';
-                    summaryHTML += `<li>${product.name}${tag} x ${qty} ($0.00)</li>`;
+                    const storageTag = storageOption !== 'Standard' ? ` (${storageOption})` : '';
+                    summaryHTML += `<li>${product.name}${storageTag}${tag} x${qty} ($0.00)</li>`;
                 }
             });
 
@@ -805,7 +956,6 @@
             checkoutSummary.innerHTML = summaryHTML;
         }
 
-        // Complete Order & Deduct Stock Directly in Firebase
         function completeOrder(event) {
             event.preventDefault();
 
@@ -817,26 +967,35 @@
             const email = document.getElementById('email').value;
             const address = document.getElementById('address').value;
 
-            const orderedItems = Object.keys(cart).map(id => {
-                const product = products.find(p => p.id === Number(id));
+            const orderedItems = Object.keys(cart).map(key => {
+                const [idStr, storageOption] = key.split('_');
+                const product = products.find(p => p.id === Number(idStr));
                 return {
                     name: product.name,
-                    quantity: cart[id],
+                    storage: storageOption !== 'Standard' ? storageOption : null,
+                    quantity: cart[key],
                     isPreOrder: product.isPreOrder || false
                 };
             });
 
             // Prepare Firebase multi-location update object for deducting stock
             let dbUpdates = {};
-            Object.keys(cart).forEach(id => {
-                const product = products.find(p => p.id === Number(id));
+            let productDeductions = {};
+
+            Object.keys(cart).forEach(key => {
+                const [idStr] = key.split('_');
+                productDeductions[idStr] = (productDeductions[idStr] || 0) + cart[key];
+            });
+
+            Object.keys(productDeductions).forEach(idStr => {
+                const product = products.find(p => p.id === Number(idStr));
                 if (product) {
-                    const newStock = Math.max(0, product.stock - cart[id]);
+                    const newStock = Math.max(0, product.stock - productDeductions[idStr]);
                     dbUpdates[`/products/${product.firebaseKey}/stock`] = newStock;
                 }
             });
 
-            // 1. Push order to Firebase 'orders' node
+            // Push order to Firebase
             database.ref('orders').push({
                 fullName: name,
                 email: email,
@@ -845,13 +1004,12 @@
                 priceTotal: "$0.00",
                 timestamp: new Date().toISOString()
             })
-            // 2. Update stock counts directly in Firebase 'products' node
             .then(() => database.ref().update(dbUpdates))
             .then(() => {
                 cart = {};
                 updateCartNavCount();
 
-                alert("🎉 Order / Pre-order successfully placed and stock updated!");
+                alert("🎉 Order / Pre-order successfully placed!");
                 submitBtn.disabled = false;
                 submitBtn.innerText = "Confirm Order ($0.00)";
                 closeCheckoutModal();
@@ -863,86 +1021,11 @@
             });
         }
 
-        // Close modal when clicking on overlay background
-        window.onclick = function(event) {
-            const cartModal = document.getElementById('cartModal');
-            const checkoutModal = document.getElementById('checkoutModal');
-            const productModal = document.getElementById('productModal');
-            if (event.target === cartModal) closeCartModal();
-            if (event.target === checkoutModal) closeCheckoutModal();
-            if (event.target === productModal) closeProductModal();
-        }
-
-        // Initialize Firebase product listener on page load
-        listenToFirebaseProducts();
-      // Render Product Cards Dynamically (Updated to support searching)
-       // Render Product Cards (Updated for Categories & Search)
-        function renderProducts(searchQuery = '') {
-            const productGrid = document.getElementById('productGrid');
-            productGrid.innerHTML = '';
-
-            let filteredProducts = products;
-
-            // 1. First, filter by the selected category
-            if (currentCategory === 'freebies') {
-                filteredProducts = filteredProducts.filter(p => !p.isPreOrder);
-            } else if (currentCategory === 'preorders') {
-                filteredProducts = filteredProducts.filter(p => p.isPreOrder);
-            }
-
-            // 2. Next, filter by whatever is typed in the search bar
-            if (searchQuery.trim() !== '') {
-                filteredProducts = filteredProducts.filter(product => 
-                    product.name.toLowerCase().includes(searchQuery.toLowerCase())
-                );
-            }
-
-            if (filteredProducts.length === 0) {
-                productGrid.innerHTML = '<p style="text-align:center; grid-column: 1/-1; font-size: 1.2rem;">No products found in this category. 🕵️‍♂️</p>';
-                return;
-            }
-
-            filteredProducts.forEach(product => {
-                const isOutOfStock = product.stock <= 0;
-                const isPreOrder = product.isPreOrder || false;
-                const card = document.createElement('div');
-                card.className = 'card';
-
-                card.innerHTML = `
-                    <img src="${product.image}" alt="${product.name}" onclick="openProductModal(${product.id})">
-                    <div class="card-content">
-                        <h4 class="card-title">${product.name}</h4>
-                        <div class="card-price-row">
-                            <span class="card-price">$0.00</span>
-                            <span class="${isPreOrder ? 'badge-preorder' : 'badge-free'}">
-                                ${isPreOrder ? 'PRE-ORDER' : 'FREE'}
-                            </span>
-                        </div>
-                        <p class="stock-tag ${isOutOfStock ? 'out-of-stock' : (isPreOrder ? 'pre-order' : '')}">
-                            ${isOutOfStock ? '❌ Sold Out' : (isPreOrder ? `🚀 Pre-Order Available (${product.stock} left)` : `📦 In Stock: ${product.stock}`)}
-                        </p>
-                        <div class="card-actions">
-                            <button class="btn-secondary" onclick="openProductModal(${product.id})">ℹ️ Details</button>
-                            <button 
-                                class="btn ${isPreOrder ? 'btn-preorder' : ''}" 
-                                onclick="addToCart(${product.id})" 
-                                ${isOutOfStock ? 'disabled' : ''}>
-                                ${isOutOfStock ? 'Sold Out' : (isPreOrder ? 'Pre-Order' : 'Add to Cart')}
-                            </button>
-                        </div>
-                    </div>
-                `;
-                productGrid.appendChild(card);
-            });
-        }
-
-        // Search Function (Updated to respect category banners)
         function executeSearch() {
             const query = document.getElementById('searchInput').value.trim();
             const adBanner = document.getElementById('adBanner');
             const heroSection = document.getElementById('heroSection');
             
-            // Hide banners if searching OR if browsing a specific category
             if (query.length > 0 || currentCategory !== 'all') {
                 if (adBanner) adBanner.style.display = 'none';
                 if (heroSection) heroSection.style.display = 'none';
@@ -953,18 +1036,15 @@
 
             renderProducts(query);
         }
-      // Handle clicking the top category links
+
         function filterCategory(category) {
             currentCategory = category;
-            
-            // Clear the search bar so it doesn't conflict with the category
             document.getElementById('searchInput').value = '';
             
             const adBanner = document.getElementById('adBanner');
             const heroSection = document.getElementById('heroSection');
             const sectionTitle = document.querySelector('.section-title');
             
-            // Update the page title and banner visibility based on the category
             if (category === 'all') {
                 if (adBanner) adBanner.style.display = 'block';
                 if (heroSection) heroSection.style.display = 'block';
@@ -977,6 +1057,15 @@
 
             renderProducts();
         }
+
+        window.onclick = function(event) {
+            if (event.target === document.getElementById('cartModal')) closeCartModal();
+            if (event.target === document.getElementById('checkoutModal')) closeCheckoutModal();
+            if (event.target === document.getElementById('productModal')) closeProductModal();
+            if (event.target === document.getElementById('storageModal')) closeStorageModal();
+        }
+
+        listenToFirebaseProducts();
     </script>
 
 </body>
