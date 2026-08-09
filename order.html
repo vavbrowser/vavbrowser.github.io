@@ -381,6 +381,7 @@
             color: #aaa;
             margin-top: 3rem;
         }
+
         /* Search Bar Styles */
         .search-container {
             display: flex;
@@ -414,30 +415,6 @@
 
         .search-container button:hover {
             transform: scale(1.1);
-        }
-
-        /* Options Selector Styling */
-        .option-pills {
-            display: flex;
-            gap: 0.5rem;
-            flex-wrap: wrap;
-            margin: 0.8rem 0;
-        }
-
-        .option-pill {
-            padding: 0.5rem 1rem;
-            border: 2px solid #ccc;
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: bold;
-            font-size: 0.9rem;
-            background: #f8f9fa;
-        }
-
-        .option-pill.active {
-            border-color: #2ec4b6;
-            background: #e8fcc2;
-            color: #1a1a2e;
         }
 
         @media (max-width: 768px) {
@@ -509,7 +486,7 @@
 
     <div id="adBanner" style="position: relative; width: 100%; height: 0; padding-top: 56.2500%; padding-bottom: 0; box-shadow: 0 2px 8px 0 rgba(63,69,81,0.16); margin-top: 1.6em; margin-bottom: 0.9em; overflow: hidden; border-radius: 8px; will-change: transform;">
       <iframe loading="lazy" style="position: absolute; width: 100%; height: 100%; top: 0; left: 0; border: none; padding: 0;margin: 0;"
-        src="https://www.canva.com/design/DAHQt2lwCqs/fB39w549mU8c5NpFt9hVhA/view?embed" allowfullscreen="allowfullscreen" allow="fullscreen">
+        src="https://www.canva.com/design/DAHQt2lwCqs/fB39w549mU8c5NpFt9hVhA/watch?embed" allowfullscreen="allowfullscreen" allow="fullscreen">
       </iframe>
     </div>
 
@@ -536,8 +513,7 @@
             
             <div class="form-group">
                 <label for="storageSelect"><strong>Storage Capacity:</strong></label>
-                <select id="storageSelect">
-                    </select>
+                <select id="storageSelect"></select>
             </div>
             
             <button class="btn" style="margin-top: 1rem;" id="confirmStorageBtn">Confirm & Add to Cart</button>
@@ -610,10 +586,43 @@
         const database = firebase.database();
 
         let products = [];
-        // Shopping Cart map using key format: `${productId}_${selectedStorage}`
         let cart = {};
         let currentCategory = 'all';
         let pendingStorageProductId = null;
+
+        // Extract and normalize storage option array/map with stock values
+        function getStorageOptionsList(product) {
+            if (!product || !product.storageOptions) return [];
+
+            // If storageOptions is an Object: { "128GB": 5, "256GB": 5 }
+            if (typeof product.storageOptions === 'object' && !Array.isArray(product.storageOptions)) {
+                return Object.entries(product.storageOptions).map(([key, value]) => ({
+                    name: key,
+                    stock: Number(value) || 0
+                }));
+            }
+
+            // Fallback: Array of objects or strings
+            if (Array.isArray(product.storageOptions)) {
+                return product.storageOptions.map(opt => {
+                    if (typeof opt === 'object' && opt !== null) {
+                        return { name: opt.name || opt.option || 'Option', stock: Number(opt.stock || 0) };
+                    }
+                    return { name: String(opt), stock: Number(product.stock || 0) };
+                });
+            }
+
+            return [];
+        }
+
+        // Calculate total available stock across all storage options
+        function getProductTotalStock(product) {
+            const options = getStorageOptionsList(product);
+            if (options.length > 0) {
+                return options.reduce((sum, item) => sum + item.stock, 0);
+            }
+            return Number(product.stock || 0);
+        }
 
         // Fetch products real-time
         function listenToFirebaseProducts() {
@@ -658,7 +667,8 @@
             }
 
             filteredProducts.forEach(product => {
-                const isOutOfStock = product.stock <= 0;
+                const totalStock = getProductTotalStock(product);
+                const isOutOfStock = totalStock <= 0;
                 const isPreOrder = product.isPreOrder || false;
                 const card = document.createElement('div');
                 card.className = 'card';
@@ -674,7 +684,7 @@
                             </span>
                         </div>
                         <p class="stock-tag ${isOutOfStock ? 'out-of-stock' : (isPreOrder ? 'pre-order' : '')}">
-                            ${isOutOfStock ? '❌ Sold Out' : (isPreOrder ? `🚀 Pre-Order Available (${product.stock} left)` : `📦 In Stock: ${product.stock}`)}
+                            ${isOutOfStock ? '❌ Sold Out' : (isPreOrder ? `🚀 Pre-Order Available (${totalStock} left)` : `📦 In Stock: ${totalStock}`)}
                         </p>
                         <div class="card-actions">
                             <button class="btn-secondary" onclick="openProductModal(${product.id})">ℹ️ Details</button>
@@ -694,12 +704,11 @@
         // Handles storage check before adding to cart
         function handleAddToCartClick(productId) {
             const product = products.find(p => p.id === productId);
-            if (!product || product.stock <= 0) return;
+            if (!product || getProductTotalStock(product) <= 0) return;
 
-            // Check if storage options exist in Firebase
-            const hasStorage = product.hasStorageOptions === true || product.storageOptions === true || Array.isArray(product.storageOptions);
+            const optionsList = getStorageOptionsList(product);
 
-            if (hasStorage) {
+            if (optionsList.length > 0 || product.hasStorageOptions === true) {
                 openStorageModal(product);
             } else {
                 addToCart(productId, 'Standard');
@@ -711,27 +720,38 @@
             pendingStorageProductId = product.id;
             const selectEl = document.getElementById('storageSelect');
             const subtextEl = document.getElementById('storageModalSubtext');
+            const confirmBtn = document.getElementById('confirmStorageBtn');
             selectEl.innerHTML = '';
 
             subtextEl.innerText = `Choose storage capacity for "${product.name}":`;
 
-            // Use array from Firebase if provided, otherwise default choices
-            let options = ['128GB', '256GB', '512GB', '1TB'];
-            if (Array.isArray(product.storageOptions) && product.storageOptions.length > 0) {
-                options = product.storageOptions;
-            }
+            const optionsList = getStorageOptionsList(product);
+            let hasAvailableOption = false;
 
-            options.forEach(opt => {
+            optionsList.forEach(opt => {
                 const optionEl = document.createElement('option');
-                optionEl.value = opt;
-                optionEl.innerText = opt;
+                optionEl.value = opt.name;
+                const isOptOut = opt.stock <= 0;
+                optionEl.innerText = `${opt.name} ${isOptOut ? '(Sold Out)' : `(${opt.stock} available)`}`;
+                
+                if (isOptOut) {
+                    optionEl.disabled = true;
+                } else if (!hasAvailableOption) {
+                    optionEl.selected = true;
+                    hasAvailableOption = true;
+                }
                 selectEl.appendChild(optionEl);
             });
 
-            document.getElementById('confirmStorageBtn').onclick = function() {
+            confirmBtn.disabled = !hasAvailableOption;
+            confirmBtn.innerText = hasAvailableOption ? "Confirm & Add to Cart" : "Option Sold Out";
+
+            confirmBtn.onclick = function() {
                 const selectedStorage = selectEl.value;
-                addToCart(pendingStorageProductId, selectedStorage);
-                closeStorageModal();
+                if (selectedStorage) {
+                    addToCart(pendingStorageProductId, selectedStorage);
+                    closeStorageModal();
+                }
             };
 
             document.getElementById('storageModal').style.display = 'flex';
@@ -742,24 +762,28 @@
             pendingStorageProductId = null;
         }
 
-        // Add Product to Cart with Storage Option
+        // Add Product to Cart with Storage Option validation
         function addToCart(productId, storageOption = 'Standard') {
             const product = products.find(p => p.id === productId);
-            if (!product || product.stock <= 0) return;
+            if (!product) return;
+
+            const optionsList = getStorageOptionsList(product);
+            let maxOptionStock = product.stock || 0;
+
+            if (optionsList.length > 0 && storageOption !== 'Standard') {
+                const match = optionsList.find(o => o.name === storageOption);
+                if (match) maxOptionStock = match.stock;
+            }
 
             const cartKey = `${productId}_${storageOption}`;
-            
-            // Count total current items for this product ID in cart
-            const currentTotalInCart = Object.keys(cart)
-                .filter(k => k.startsWith(`${productId}_`))
-                .reduce((sum, k) => sum + cart[k], 0);
+            const currentQtyInCart = cart[cartKey] || 0;
 
-            if (currentTotalInCart >= product.stock) {
-                alert(`Only ${product.stock} units available!`);
+            if (currentQtyInCart >= maxOptionStock) {
+                alert(`Sorry, no more stock available for ${storageOption}! (Max: ${maxOptionStock})`);
                 return;
             }
 
-            cart[cartKey] = (cart[cartKey] || 0) + 1;
+            cart[cartKey] = currentQtyInCart + 1;
             updateCartNavCount();
             
             const storageTag = storageOption !== 'Standard' ? ` (${storageOption})` : '';
@@ -770,23 +794,24 @@
             const product = products.find(p => p.id === productId);
             if (!product) return;
 
-            const isOutOfStock = product.stock <= 0;
+            const totalStock = getProductTotalStock(product);
+            const isOutOfStock = totalStock <= 0;
             const isPreOrder = product.isPreOrder || false;
-            const hasStorage = product.hasStorageOptions === true || product.storageOptions === true || Array.isArray(product.storageOptions);
             const modalContent = document.getElementById('productModalContent');
 
+            const optionsList = getStorageOptionsList(product);
             let storageSelectorHTML = '';
-            if (hasStorage) {
-                let options = ['128GB', '256GB', '512GB', '1TB'];
-                if (Array.isArray(product.storageOptions) && product.storageOptions.length > 0) {
-                    options = product.storageOptions;
-                }
-                
+
+            if (optionsList.length > 0) {
                 storageSelectorHTML = `
                     <div class="form-group" style="margin-top: 1rem;">
                         <label><strong>Select Storage Capacity:</strong></label>
                         <select id="modalStorageSelect">
-                            ${options.map(opt => `<option value="${opt}">${opt}</option>`).join('')}
+                            ${optionsList.map(opt => `
+                                <option value="${opt.name}" ${opt.stock <= 0 ? 'disabled' : ''}>
+                                    ${opt.name} ${opt.stock <= 0 ? '(Sold Out)' : `(${opt.stock} available)`}
+                                </option>
+                            `).join('')}
                         </select>
                     </div>
                 `;
@@ -802,7 +827,7 @@
                     </span>
                 </div>
                 <p class="stock-tag ${isOutOfStock ? 'out-of-stock' : (isPreOrder ? 'pre-order' : '')}" style="margin-bottom: 1rem;">
-                    ${isOutOfStock ? '❌ Sold Out' : (isPreOrder ? `🚀 Pre-Order Available (${product.stock} left)` : `📦 Current Stock: ${product.stock} units`)}
+                    ${isOutOfStock ? '❌ Sold Out' : (isPreOrder ? `🚀 Pre-Order Available (${totalStock} left)` : `📦 Total Stock: ${totalStock} units`)}
                 </p>
                 <div style="background: #f8f9fa; padding: 1rem; border-radius: 8px; margin-bottom: 1rem; font-size: 0.95rem; line-height: 1.5;">
                     <strong>Product Details:</strong>
@@ -816,7 +841,7 @@
                 <button 
                     class="btn ${isPreOrder ? 'btn-preorder' : ''}" 
                     style="margin-top: 1rem;"
-                    onclick="confirmModalAddToCart(${product.id},${hasStorage})" 
+                    onclick="confirmModalAddToCart(${product.id}, ${optionsList.length > 0})" 
                     ${isOutOfStock ? 'disabled' : ''}>
                     ${isOutOfStock ? 'Sold Out' : (isPreOrder ? 'Pre-Order Now' : 'Add to Cart')}
                 </button>
@@ -910,7 +935,7 @@
         }
 
         function changeQty(cartKey, delta) {
-            const [idStr] = cartKey.split('_');
+            const [idStr, storageOption] = cartKey.split('_');
             const productId = Number(idStr);
             const product = products.find(p => p.id === productId);
             if (!product) return;
@@ -918,12 +943,16 @@
             const currentQty = cart[cartKey] || 0;
             const newQty = currentQty + delta;
 
-            const currentTotalInCart = Object.keys(cart)
-                .filter(k => k.startsWith(`${productId}_`))
-                .reduce((sum, k) => sum + cart[k], 0);
+            const optionsList = getStorageOptionsList(product);
+            let maxOptionStock = product.stock || 0;
 
-            if (delta > 0 && currentTotalInCart >= product.stock) {
-                alert(`Cannot add more. Max stock available: ${product.stock}`);
+            if (optionsList.length > 0 && storageOption !== 'Standard') {
+                const match = optionsList.find(o => o.name === storageOption);
+                if (match) maxOptionStock = match.stock;
+            }
+
+            if (delta > 0 && currentQty >= maxOptionStock) {
+                alert(`Cannot add more. Max stock available for ${storageOption}: ${maxOptionStock}`);
                 return;
             }
 
@@ -978,20 +1007,45 @@
                 };
             });
 
-            // Prepare Firebase multi-location update object for deducting stock
             let dbUpdates = {};
-            let productDeductions = {};
+            let deductions = {};
 
+            // Group deductions per product and storage variant
             Object.keys(cart).forEach(key => {
-                const [idStr] = key.split('_');
-                productDeductions[idStr] = (productDeductions[idStr] || 0) + cart[key];
+                const [idStr, storageOption] = key.split('_');
+                const productId = Number(idStr);
+                const qty = cart[key];
+
+                if (!deductions[productId]) {
+                    deductions[productId] = { total: 0, options: {} };
+                }
+                deductions[productId].total += qty;
+                if (storageOption !== 'Standard') {
+                    deductions[productId].options[storageOption] = (deductions[productId].options[storageOption] || 0) + qty;
+                }
             });
 
-            Object.keys(productDeductions).forEach(idStr => {
+            Object.keys(deductions).forEach(idStr => {
                 const product = products.find(p => p.id === Number(idStr));
                 if (product) {
-                    const newStock = Math.max(0, product.stock - productDeductions[idStr]);
-                    dbUpdates[`/products/${product.firebaseKey}/stock`] = newStock;
+                    const deduction = deductions[idStr];
+                    
+                    // Deduct overall total stock
+                    const currentTotalStock = getProductTotalStock(product);
+                    const newTotalStock = Math.max(0, currentTotalStock - deduction.total);
+                    dbUpdates[`/products/${product.firebaseKey}/stock`] = newTotalStock;
+
+                    // Deduct stock for specific storage options in Firebase
+                    if (product.storageOptions && typeof product.storageOptions === 'object') {
+                        Object.keys(deduction.options).forEach(optKey => {
+                            const optQty = deduction.options[optKey];
+                            if (!Array.isArray(product.storageOptions) && product.storageOptions[optKey] !== undefined) {
+                                const currentOptStock = Number(product.storageOptions[optKey]) || 0;
+                                const newOptStock = Math.max(0, currentOptStock - optQty);
+                                dbUpdates[`/products/${product.firebaseKey}/storageOptions/${optKey}`] = newOptStock;
+                            }
+                        });
+                    }
                 }
             });
 
