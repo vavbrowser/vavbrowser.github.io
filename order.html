@@ -581,7 +581,7 @@
 
     <section class="hero" id="heroSection">
         <h2>vav shop</h2>
-        <p>Pre-order upcoming devices & claim exclusive items for free!</p>
+        <p>Pre-order upcoming devices & claim exclusive items!</p>
     </section>
 
     <div id="adBanner" style="position: relative; width: 100%; height: 0; padding-top: 56.2500%; padding-bottom: 0; box-shadow: 0 2px 8px 0 rgba(63,69,81,0.16); margin-top: 1.6em; margin-bottom: 0.9em; overflow: hidden; border-radius: 8px; will-change: transform;">
@@ -630,7 +630,7 @@
             <div id="cartFooter" style="display: none;">
                 <div class="cart-total">
                     <span>Total:</span>
-                    <span style="color: #2ec4b6;">$0.00</span>
+                    <span id="cartTotalPrice" style="color: #2ec4b6;">$0.00</span>
                 </div>
                 <button class="btn" onclick="openCheckoutModal()">Proceed to Checkout</button>
             </div>
@@ -689,6 +689,24 @@
         let cart = {};
         let currentCategory = 'all';
         let pendingStorageProductId = null;
+
+        // Helper function to format currency prices dynamically
+        function formatPrice(price) {
+            const num = Number(price);
+            if (isNaN(num) || num === 0) return "$0.00";
+            return `$${num.toFixed(2)}`;
+        }
+
+        // Helper function to calculate cart total amount
+        function calculateCartTotal() {
+            return Object.keys(cart).reduce((sum, key) => {
+                const [idStr] = key.split('_');
+                const product = products.find(p => p.id === Number(idStr));
+                const qty = cart[key] || 0;
+                const unitPrice = (product && product.price) ? Number(product.price) : 0;
+                return sum + (unitPrice * qty);
+            }, 0);
+        }
 
         // Dark Mode Logic
         function toggleDarkMode() {
@@ -793,6 +811,7 @@
                 const totalStock = getProductTotalStock(product);
                 const isOutOfStock = totalStock <= 0;
                 const isPreOrder = product.isPreOrder || false;
+                const displayPrice = formatPrice(product.price);
                 const card = document.createElement('div');
                 card.className = 'card';
 
@@ -801,9 +820,9 @@
                     <div class="card-content">
                         <h4 class="card-title">${product.name}</h4>
                         <div class="card-price-row">
-                            <span class="card-price">$0.00</span>
+                            <span class="card-price">${displayPrice}</span>
                             <span class="${isPreOrder ? 'badge-preorder' : 'badge-free'}">
-                                ${isPreOrder ? 'PRE-ORDER' : 'FREE'}
+                                ${isPreOrder ? 'PRE-ORDER' : (Number(product.price) > 0 ? 'AVAILABLE' : 'FREE')}
                             </span>
                         </div>
                         <p class="stock-tag ${isOutOfStock ? 'out-of-stock' : (isPreOrder ? 'pre-order' : '')}">
@@ -918,6 +937,7 @@
             const isOutOfStock = totalStock <= 0;
             const isPreOrder = product.isPreOrder || false;
             const modalContent = document.getElementById('productModalContent');
+            const displayPrice = formatPrice(product.price);
 
             const optionsList = getStorageOptionsList(product);
             let storageSelectorHTML = '';
@@ -941,9 +961,9 @@
                 <img src="${product.image}" alt="${product.name}" style="width:100%; height: 220px; object-fit: cover; border-radius: 8px; margin-bottom: 1rem; background-color: #e0e0e0;">
                 <h3 class="modal-title">${product.name}</h3>
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                    <span class="card-price" style="font-size: 1.4rem;">$0.00</span>
+                    <span class="card-price" style="font-size: 1.4rem;">${displayPrice}</span>
                     <span class="${isPreOrder ? 'badge-preorder' : 'badge-free'}">
-                        ${isPreOrder ? 'PRE-ORDER ITEM' : 'FREE ITEM'}
+                        ${isPreOrder ? 'PRE-ORDER ITEM' : (Number(product.price) > 0 ? 'STORE ITEM' : 'FREE ITEM')}
                     </span>
                 </div>
                 <p class="stock-tag ${isOutOfStock ? 'out-of-stock' : (isPreOrder ? 'pre-order' : '')}" style="margin-bottom: 1rem;">
@@ -1022,7 +1042,9 @@
                 return;
             }
 
+            let grandTotal = 0;
             let html = '<ul class="cart-list">';
+
             cartKeys.forEach(key => {
                 const [idStr, storageOption] = key.split('_');
                 const id = Number(idStr);
@@ -1030,14 +1052,19 @@
                 const product = products.find(p => p.id === id);
 
                 if (product && qty > 0) {
+                    const unitPrice = Number(product.price || 0);
+                    const itemTotal = unitPrice * qty;
+                    grandTotal += itemTotal;
+
                     const tag = product.isPreOrder ? ' <small style="color:#0284c7;">(Pre-order)</small>' : '';
                     const storageDisplay = storageOption !== 'Standard' ? ` 💾 <strong>${storageOption}</strong>` : '';
+                    const itemPriceLabel = `${formatPrice(unitPrice)}${qty > 1 ? ` (${formatPrice(itemTotal)} total)` : ''}`;
                     
                     html += `
                         <li class="cart-item">
                             <div class="cart-item-info">
                                 <span class="cart-item-title">${product.name}${storageDisplay}${tag}</span>
-                                <span class="cart-item-price">$0.00</span>
+                                <span class="cart-item-price">${itemPriceLabel}</span>
                             </div>
                             <div class="cart-controls">
                                 <button class="cart-qty-btn" onclick="changeQty('${key}', -1)">-</button>
@@ -1052,6 +1079,11 @@
 
             cartContent.innerHTML = html;
             cartFooter.style.display = 'block';
+
+            const cartTotalEl = document.getElementById('cartTotalPrice');
+            if (cartTotalEl) {
+                cartTotalEl.innerText = formatPrice(grandTotal);
+            }
         }
 
         function changeQty(cartKey, delta) {
@@ -1088,6 +1120,8 @@
 
         function renderCheckoutSummary() {
             const checkoutSummary = document.getElementById('checkoutSummary');
+            const grandTotal = calculateCartTotal();
+
             let summaryHTML = '<strong>Order Summary:</strong><ul style="margin-top: 0.5rem; padding-left: 1.2rem;">';
 
             Object.keys(cart).forEach(key => {
@@ -1095,14 +1129,22 @@
                 const product = products.find(p => p.id === Number(idStr));
                 const qty = cart[key];
                 if (product) {
+                    const price = Number(product.price || 0);
+                    const lineTotal = price * qty;
                     const tag = product.isPreOrder ? ' [PRE-ORDER]' : '';
                     const storageTag = storageOption !== 'Standard' ? ` (${storageOption})` : '';
-                    summaryHTML += `<li>${product.name}${storageTag}${tag} x${qty} ($0.00)</li>`;
+                    summaryHTML += `<li>${product.name}${storageTag}${tag} x${qty} - ${formatPrice(lineTotal)}</li>`;
                 }
             });
 
             summaryHTML += '</ul>';
+            summaryHTML += `<div style="margin-top: 0.8rem; font-weight: bold; font-size: 1.05rem;">Total: <span style="color: #2ec4b6;">${formatPrice(grandTotal)}</span></div>`;
             checkoutSummary.innerHTML = summaryHTML;
+
+            const submitBtn = document.getElementById('submitBtn');
+            if (submitBtn) {
+                submitBtn.innerText = `Confirm Order (${formatPrice(grandTotal)})`;
+            }
         }
 
         function completeOrder(event) {
@@ -1116,6 +1158,9 @@
             const email = document.getElementById('email').value;
             const address = document.getElementById('address').value;
 
+            const orderTotal = calculateCartTotal();
+            const formattedTotal = formatPrice(orderTotal);
+
             const orderedItems = Object.keys(cart).map(key => {
                 const [idStr, storageOption] = key.split('_');
                 const product = products.find(p => p.id === Number(idStr));
@@ -1123,6 +1168,7 @@
                     name: product.name,
                     storage: storageOption !== 'Standard' ? storageOption : null,
                     quantity: cart[key],
+                    unitPrice: formatPrice(product.price || 0),
                     isPreOrder: product.isPreOrder || false
                 };
             });
@@ -1171,7 +1217,7 @@
                 email: email,
                 shippingAddress: address,
                 itemsClaimed: orderedItems,
-                priceTotal: "$0.00",
+                priceTotal: formattedTotal,
                 timestamp: new Date().toISOString()
             })
             .then(() => database.ref().update(dbUpdates))
@@ -1187,7 +1233,7 @@
             .catch((error) => {
                 alert("Error saving order: " + error.message);
                 submitBtn.disabled = false;
-                submitBtn.innerText = "Confirm Order ($0.00)";
+                submitBtn.innerText = `Confirm Order (${formattedTotal})`;
             });
         }
 
