@@ -20,6 +20,7 @@
         body {
             background-color: #f4f6f8;
             color: #333;
+            transition: background-color 0.3s ease, color 0.3s ease;
         }
 
         /* Navigation Header */
@@ -37,6 +38,11 @@
 
         header h1 {
             font-size: 1.5rem;
+        }
+
+        nav {
+            display: flex;
+            align-items: center;
         }
 
         nav a {
@@ -59,6 +65,22 @@
             font-size: 0.85rem;
             font-weight: bold;
             margin-left: 0.3rem;
+        }
+
+        /* Theme Toggle Button */
+        .theme-toggle-btn {
+            background: transparent;
+            border: none;
+            font-size: 1.2rem;
+            cursor: pointer;
+            margin-left: 1.5rem;
+            padding: 0.3rem;
+            border-radius: 50%;
+            transition: transform 0.2s ease;
+        }
+
+        .theme-toggle-btn:hover {
+            transform: scale(1.2);
         }
 
         /* Hero Banner */
@@ -105,7 +127,7 @@
             border-radius: 10px;
             overflow: hidden;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-            transition: transform 0.2s ease;
+            transition: transform 0.2s ease, background-color 0.3s ease;
             display: flex;
             flex-direction: column;
         }
@@ -260,6 +282,7 @@
             position: relative;
             max-height: 90vh;
             overflow-y: auto;
+            transition: background-color 0.3s ease, color 0.3s ease;
         }
 
         .close-btn {
@@ -392,6 +415,7 @@
             margin: 0 1rem;
             flex-grow: 1;
             max-width: 350px;
+            transition: background-color 0.3s ease;
         }
 
         .search-container input {
@@ -415,6 +439,81 @@
 
         .search-container button:hover {
             transform: scale(1.1);
+        }
+
+        /* Dark Mode Styles */
+        body.dark-mode {
+            background-color: #121212;
+            color: #e0e0e0;
+        }
+
+        body.dark-mode .card,
+        body.dark-mode .modal-menu {
+            background-color: #1e1e1e;
+            color: #e0e0e0;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+        }
+
+        body.dark-mode .card-title,
+        body.dark-mode .modal-title {
+            color: #ffffff;
+            border-color: #333;
+        }
+
+        body.dark-mode .form-group label {
+            color: #aaa;
+        }
+
+        body.dark-mode .form-group input,
+        body.dark-mode .form-group select {
+            background-color: #2b2b2b;
+            color: #ffffff;
+            border: 1px solid #444;
+        }
+
+        body.dark-mode .order-summary {
+            background-color: #2b2b2b;
+            color: #e0e0e0;
+        }
+
+        body.dark-mode .btn-secondary {
+            background-color: #333333;
+            color: #ffffff;
+        }
+
+        body.dark-mode .btn-secondary:hover {
+            background-color: #444444;
+        }
+
+        body.dark-mode .cart-item {
+            border-bottom-color: #333;
+        }
+
+        body.dark-mode .cart-qty-btn {
+            background-color: #333;
+            color: #fff;
+        }
+
+        body.dark-mode .cart-qty-btn:hover {
+            background-color: #444;
+        }
+
+        body.dark-mode .search-container {
+            background-color: #2b2b2b;
+        }
+
+        body.dark-mode .search-container input {
+            background-color: #2b2b2b;
+            color: #ffffff;
+        }
+
+        body.dark-mode .close-btn:hover {
+            color: #fff;
+        }
+
+        body.dark-mode #productModal .close-btn {
+            background: #2b2b2b;
+            color: #fff;
         }
 
         @media (max-width: 768px) {
@@ -476,6 +575,7 @@
             <a onclick="filterCategory('freebies')">Freebies</a>
             <a onclick="filterCategory('preorders')">Pre-Orders</a>
             <a onclick="openCartModal()">Cart <span id="cartNavCount" class="cart-badge">0</span></a>
+            <button id="themeToggleBtn" class="theme-toggle-btn" onclick="toggleDarkMode()" title="Toggle Dark/Light Mode">🌙</button>
         </nav>
     </header>
 
@@ -509,7 +609,7 @@
         <div class="modal-menu">
             <span class="close-btn" onclick="closeStorageModal()">&times;</span>
             <h3 class="modal-title">Select Storage Option</h3>
-            <p style="margin-bottom: 1rem; color: #666;" id="storageModalSubtext">Choose a capacity for your device:</p>
+            <p style="margin-bottom: 1rem; color: #888;" id="storageModalSubtext">Choose a capacity for your device:</p>
             
             <div class="form-group">
                 <label for="storageSelect"><strong>Storage Capacity:</strong></label>
@@ -590,11 +690,37 @@
         let currentCategory = 'all';
         let pendingStorageProductId = null;
 
+        // Dark Mode Logic
+        function toggleDarkMode() {
+            document.body.classList.toggle('dark-mode');
+            const isDark = document.body.classList.contains('dark-mode');
+            localStorage.setItem('theme', isDark ? 'dark' : 'light');
+            updateThemeIcon(isDark);
+        }
+
+        function updateThemeIcon(isDark) {
+            const btn = document.getElementById('themeToggleBtn');
+            if (btn) {
+                btn.innerText = isDark ? '☀️' : '🌙';
+            }
+        }
+
+        function initTheme() {
+            const savedTheme = localStorage.getItem('theme');
+            const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+            
+            if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
+                document.body.classList.add('dark-mode');
+                updateThemeIcon(true);
+            } else {
+                updateThemeIcon(false);
+            }
+        }
+
         // Extract and normalize storage option array/map with stock values
         function getStorageOptionsList(product) {
             if (!product || !product.storageOptions) return [];
 
-            // If storageOptions is an Object: { "128GB": 5, "256GB": 5 }
             if (typeof product.storageOptions === 'object' && !Array.isArray(product.storageOptions)) {
                 return Object.entries(product.storageOptions).map(([key, value]) => ({
                     name: key,
@@ -602,7 +728,6 @@
                 }));
             }
 
-            // Fallback: Array of objects or strings
             if (Array.isArray(product.storageOptions)) {
                 return product.storageOptions.map(opt => {
                     if (typeof opt === 'object' && opt !== null) {
@@ -615,7 +740,6 @@
             return [];
         }
 
-        // Calculate total available stock across all storage options
         function getProductTotalStock(product) {
             const options = getStorageOptionsList(product);
             if (options.length > 0) {
@@ -624,7 +748,6 @@
             return Number(product.stock || 0);
         }
 
-        // Fetch products real-time
         function listenToFirebaseProducts() {
             database.ref('products').on('value', (snapshot) => {
                 const data = snapshot.val();
@@ -635,11 +758,11 @@
                     }));
                     renderProducts();
                 } else {
-                    document.getElementById('productGrid').innerHTML = '<p style="text-align:center; grid-column: 1/-1;">No products found in Firebase Database.</p>';
+                    document.getElementById('productGrid').innerHTML = '<p style="text-align: center; grid-column: 1/-1;">No products found in Firebase Database.</p>';
                 }
             }, (error) => {
                 console.error("Firebase fetch error:", error);
-                document.getElementById('productGrid').innerHTML = '<p style="text-align:center; color: red; grid-column: 1/-1;">Error connecting to Firebase Database.</p>';
+                document.getElementById('productGrid').innerHTML = '<p style="text-align: center; color: red; grid-column: 1/-1;">Error connecting to Firebase Database.</p>';
             });
         }
 
@@ -701,7 +824,6 @@
             });
         }
 
-        // Handles storage check before adding to cart
         function handleAddToCartClick(productId) {
             const product = products.find(p => p.id === productId);
             if (!product || getProductTotalStock(product) <= 0) return;
@@ -715,7 +837,6 @@
             }
         }
 
-        // Open Storage Selection Modal
         function openStorageModal(product) {
             pendingStorageProductId = product.id;
             const selectEl = document.getElementById('storageSelect');
@@ -762,7 +883,6 @@
             pendingStorageProductId = null;
         }
 
-        // Add Product to Cart with Storage Option validation
         function addToCart(productId, storageOption = 'Standard') {
             const product = products.find(p => p.id === productId);
             if (!product) return;
@@ -829,9 +949,9 @@
                 <p class="stock-tag ${isOutOfStock ? 'out-of-stock' : (isPreOrder ? 'pre-order' : '')}" style="margin-bottom: 1rem;">
                     ${isOutOfStock ? '❌ Sold Out' : (isPreOrder ? `🚀 Pre-Order Available (${totalStock} left)` : `📦 Total Stock: ${totalStock} units`)}
                 </p>
-                <div style="background: #f8f9fa; padding: 1rem; border-radius: 8px; margin-bottom: 1rem; font-size: 0.95rem; line-height: 1.5;">
+                <div style="padding: 1rem; border-radius: 8px; margin-bottom: 1rem; font-size: 0.95rem; line-height: 1.5;" class="order-summary">
                     <strong>Product Details:</strong>
-                    <p style="margin-top: 0.4rem; color: #555;">
+                    <p style="margin-top: 0.4rem;">
                         ${product.description ? product.description : 'No detailed description available for this item yet.'}
                     </p>
                 </div>
@@ -1010,7 +1130,6 @@
             let dbUpdates = {};
             let deductions = {};
 
-            // Group deductions per product and storage variant
             Object.keys(cart).forEach(key => {
                 const [idStr, storageOption] = key.split('_');
                 const productId = Number(idStr);
@@ -1030,12 +1149,10 @@
                 if (product) {
                     const deduction = deductions[idStr];
                     
-                    // Deduct overall total stock
                     const currentTotalStock = getProductTotalStock(product);
                     const newTotalStock = Math.max(0, currentTotalStock - deduction.total);
                     dbUpdates[`/products/${product.firebaseKey}/stock`] = newTotalStock;
 
-                    // Deduct stock for specific storage options in Firebase
                     if (product.storageOptions && typeof product.storageOptions === 'object') {
                         Object.keys(deduction.options).forEach(optKey => {
                             const optQty = deduction.options[optKey];
@@ -1049,7 +1166,6 @@
                 }
             });
 
-            // Push order to Firebase
             database.ref('orders').push({
                 fullName: name,
                 email: email,
@@ -1119,6 +1235,8 @@
             if (event.target === document.getElementById('storageModal')) closeStorageModal();
         }
 
+        // Initialize Theme & Firebase
+        initTheme();
         listenToFirebaseProducts();
     </script>
 
