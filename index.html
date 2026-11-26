@@ -1,733 +1,168 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>New  tab</title>
-    
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" />
-
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        body, html {
-            width: 100%;
-            height: 100%;
-            font-family: 'Roboto', sans-serif;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-            background-color: #202124;
-        }
-        
-        /* Header Toolbar */
-        .chrome-bar {
-            background-color: #2f3033;
-            padding: 8px 12px;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            border-bottom: 1px solid #3c4043;
-            position: relative;
-            z-index: 10;
-        }
-
-        /* Navigation Buttons */
-        .nav-buttons {
-            display: flex;
-            gap: 4px;
-        }
-        .btn {
-            background: none;
-            border: none;
-            cursor: pointer;
-            width: 28px;
-            height: 28px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: #e8eaed;
-            transition: background 0.2s;
-        }
-        .btn:hover {
-            background-color: #3c4043;
-        }
-        .btn .material-symbols-outlined {
-            font-size: 20px;
-        }
-
-        /* Address Bar */
-        .address-bar-container {
-            flex-grow: 1;
-            display: flex;
-            align-items: center;
-            background-color: #202124;
-            border-radius: 100px;
-            padding: 0 14px;
-            height: 34px;
-            border: 1px solid #3c4043;
-        }
-        .address-bar-container:focus-within {
-            outline: 2px solid #8ab4f8;
-        }
-        .site-icon {
-            color: #8ab4f8;
-            margin-right: 8px;
-            display: flex;
-            align-items: center;
-        }
-        .site-icon .material-symbols-outlined {
-            font-size: 16px;
-        }
-        .address-input {
-            width: 100%;
-            border: none;
-            outline: none;
-            background: transparent;
-            font-size: 14px;
-            color: #e8eaed;
-            font-family: 'Roboto', sans-serif;
-        }
-
-        /* Active Extension Shortcuts */
-        .extension-shortcuts {
-            display: flex;
-            gap: 6px;
-            align-items: center;
-        }
-        .ext-shortcut-btn {
-            color: #8ab4f8;
-        }
-
-        /* Dropdowns Base Style */
-        .extensions-mgmt-container, .more-mgmt-container {
-            position: relative;
-        }
-        .extensions-menu, .more-menu {
-            display: none;
-            position: absolute;
-            right: 0;
-            top: 40px;
-            background-color: #2d2d30;
-            border: 1px solid #434346;
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
-            padding: 12px;
-            color: #e8eaed;
-            z-index: 20;
-        }
-        .extensions-menu { width: 320px; }
-        .more-menu { width: 200px; padding: 6px 0; }
-        .extensions-menu.show, .more-menu.show { display: block; }
-
-        /* Extension Drops Rows */
-        .extension-list-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 8px 4px;
-            border-bottom: 1px solid #3c4043;
-            font-size: 13px;
-        }
-        .action-cluster { display: flex; align-items: center; gap: 8px; }
-        .pin-btn, .delete-ext-btn {
-            background: none; border: none; color: #9aa0a6; cursor: pointer; display: flex; align-items: center;
-        }
-        .pin-btn:hover, .pin-btn.active { color: #8ab4f8; }
-        .delete-ext-btn:hover { color: #ea4335; }
-        .pin-btn .material-symbols-outlined, .delete-ext-btn .material-symbols-outlined { font-size: 18px; }
-
-        .upload-section { padding-top: 12px; text-align: center; }
-        .upload-label {
-            display: inline-flex; align-items: center; gap: 6px; background-color: #3c4043; color: #8ab4f8;
-            padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 500;
-        }
-
-        /* 3-Dots Items */
-        .more-item {
-            display: flex; align-items: center; gap: 10px; padding: 10px 14px; font-size: 13px; cursor: pointer; color: #e8eaed;
-        }
-        .more-item:hover { background-color: #3c4043; }
-        .more-item .material-symbols-outlined { font-size: 18px; color: #9aa0a6; }
-
-        /* FLOATING POPUP WINDOW */
-        .extension-popup-window {
-            display: none; position: absolute; right: 12px; top: 54px; width: 320px; height: 420px;
-            background-color: #ffffff; border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.6);
-            border: 1px solid #434346; z-index: 100; overflow: hidden;
-        }
-        .extension-popup-window.show { display: block; }
-
-        /* CORE WORKSPACE PANELS */
-        .workspace {
-            display: flex; flex-grow: 1; width: 100%; height: 100%; position: relative;
-        }
-        .browser-content { flex-grow: 1; height: 100%; border: none; background-color: #202124; }
-        .browser-content.hidden { display: none; }
-
-        /* DRAGGABLE RESIZER */
-        .sidebar-resizer { display: none; width: 6px; height: 100%; background-color: #3c4043; cursor: col-resize; z-index: 6; }
-        .sidebar-resizer:hover, .sidebar-resizer.dragging { background-color: #8ab4f8; }
-
-        /* SIDEBAR PANEL */
-        .sidebar-panel {
-            display: none; width: 320px; min-width: 200px; max-width: 70vw; height: 100%;
-            background-color: #ffffff; border-left: 1px solid #3c4043; box-shadow: -4px 0 16px rgba(0,0,0,0.3); z-index: 5;
-        }
-        .popup-iframe, .sidebar-iframe { width: 100%; height: 100%; border: none; }
-
-        /* =========================================
-           NEW DEDICATED SETTINGS PAGE COMPONENT
-           ========================================= */
-        .settings-page {
-            display: none; /* Controlled dynamically via Tab state */
-            flex-grow: 1;
-            height: 100%;
-            background-color: #f1f3f4;
-            color: #202124;
-            overflow-y: auto;
-        }
-        .settings-page.active {
-            display: flex;
-        }
-        
-        /* Settings Layout Columns */
-        .settings-sidebar {
-            width: 250px;
-            background-color: #ffffff;
-            border-right: 1px solid #ch3c4043;
-            padding: 20px 0;
-            display: flex;
-            flex-direction: column;
-            border-right: 1px solid #dadce0;
-        }
-        .settings-nav-item {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 12px 24px;
-            font-size: 14px;
-            font-weight: 500;
-            color: #5f6368;
-            cursor: pointer;
-            border-radius: 0 100px 100px 0;
-            margin-right: 12px;
-        }
-        .settings-nav-item:hover { background-color: #f1f3f4; color: #202124; }
-        .settings-nav-item.active { background-color: #e8f0fe; color: #1a73e8; }
-        .settings-nav-item .material-symbols-outlined { font-size: 20px; }
-
-        .settings-body {
-            flex-grow: 1;
-            padding: 40px 60px;
-            max-width: 800px;
-        }
-        .settings-section {
-            display: none;
-        }
-        .settings-section.active {
-            display: block;
-        }
-        
-        h2 { font-size: 22px; font-weight: 400; margin-bottom: 24px; color: #202124; }
-        .settings-card {
-            background: #ffffff;
-            border-radius: 8px;
-            border: 1px solid #dadce0;
-            padding: 16px 24px;
-            margin-bottom: 16px;
-        }
-        .settings-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 14px 0;
-        }
-        .settings-row:not(:last-child) { border-bottom: 1px solid #f1f3f4; }
-        
-        .settings-info h4 { font-size: 14px; font-weight: 500; color: #3c4043; margin-bottom: 4px;}
-        .settings-info p { font-size: 12px; color: #5f6368; }
-        
-        select, input[type="text"].settings-input {
-            padding: 6px 12px;
-            border: 1px solid #dadce0;
-            border-radius: 4px;
-            font-size: 13px;
-            outline: none;
-            background-color: #fff;
-        }
-        select:focus, .settings-input:focus { border-color: #1a73e8; }
-        
-        .settings-btn {
-            background-color: #1a73e8;
-            color: white;
-            border: none;
-            padding: 8px 16px;
-            border-radius: 4px;
-            font-size: 13px;
-            font-weight: 500;
-            cursor: pointer;
-        }
-        .settings-btn:hover { background-color: #1557b0; }
-        .settings-btn.danger { background-color: #d93025; }
-        .settings-btn.danger:hover { background-color: #b21f14; }
-    </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#12343b">
+<title>Chat</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon.svg">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<style>
+:root{--ink:#12343b;--paper:#f3efe6;--card:#fffdf8;--mine:#12343b;--mine-t:#f3efe6;--accent:#e08e2b;--mute:#6b7b7e;--line:#ddd6c6}
+@media(prefers-color-scheme:dark){:root{--ink:#e8e4d8;--paper:#0e1f23;--card:#17292e;--mine:#e08e2b;--mine-t:#1b1203;--accent:#e08e2b;--mute:#8fa1a4;--line:#27393e}}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{font:16px/1.4 Georgia,"Iowan Old Style",serif;background:var(--paper);color:var(--ink);display:flex;flex-direction:column;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+header{display:flex;align-items:center;gap:.75rem;padding:.7rem 1rem;border-bottom:1px solid var(--line)}
+header h1{font-size:1.15rem;margin:0;flex:1}
+header small{display:block;font:.75rem system-ui,sans-serif;color:var(--mute)}
+button,input{font:inherit;color:inherit}
+.ghost{background:none;border:1px solid var(--line);border-radius:8px;padding:.35rem .7rem;font:.85rem system-ui,sans-serif;cursor:pointer}
+#banner{display:none;background:var(--accent);color:#1b1203;font:.85rem system-ui,sans-serif;padding:.4rem 1rem;text-align:center}
+#list{flex:1;overflow-y:auto;padding:1rem;display:flex;flex-direction:column;gap:.35rem}
+.msg{max-width:80%;padding:.5rem .8rem;border-radius:14px;background:var(--card);border:1px solid var(--line);align-self:flex-start;overflow-wrap:anywhere;white-space:pre-wrap}
+.msg.me{align-self:flex-end;background:var(--mine);color:var(--mine-t);border-color:transparent}
+.msg .who{display:block;font:600 .72rem system-ui,sans-serif;color:var(--accent);margin-bottom:.1rem}
+.msg time{display:block;font:.68rem system-ui,sans-serif;opacity:.6;margin-top:.15rem;text-align:right}
+.empty{margin:auto;color:var(--mute);text-align:center}
+form{display:flex;gap:.5rem;padding:.7rem 1rem;border-top:1px solid var(--line)}
+form input{flex:1;min-width:0;padding:.65rem .9rem;border-radius:999px;border:1px solid var(--line);background:var(--card)}
+form button{border:0;border-radius:999px;background:var(--accent);color:#1b1203;font-weight:700;padding:0 1.2rem;cursor:pointer}
+form button:disabled{opacity:.5}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+dialog{border:1px solid var(--line);border-radius:14px;background:var(--card);color:var(--ink);max-width:22rem;width:calc(100% - 2rem)}
+dialog::backdrop{background:#0008}
+dialog label{display:block;font:.8rem system-ui,sans-serif;color:var(--mute);margin:.7rem 0 .25rem}
+dialog input{width:100%;padding:.55rem .7rem;border-radius:8px;border:1px solid var(--line);background:var(--paper)}
+dialog menu{display:flex;justify-content:flex-end;gap:.5rem;margin:1rem 0 0;padding:0}
+#setup{display:none;margin:auto;max-width:28rem;padding:1.5rem}
+#setup code{background:var(--card);padding:.1rem .3rem;border-radius:4px}
+</style>
 </head>
 <body>
+<header>
+  <h1 id="title">Chat<small id="status">Connecting…</small></h1>
+  <button class="ghost" id="settingsBtn">Settings</button>
+</header>
+<div id="banner">You’re offline. Messages will send when you reconnect.</div>
+<div id="setup">
+  <h2>Add your Firebase config</h2>
+  <p>Open <code>index.html</code> and paste your web app’s config into <code>firebaseConfig</code>. The README lists the steps and the database rules to use.</p>
+</div>
+<main id="list" aria-live="polite"></main>
+<form id="form" autocomplete="off">
+  <input id="text" maxlength="500" placeholder="Write a message" aria-label="Message" required>
+  <button id="send" type="submit">Send</button>
+</form>
 
-    <div class="chrome-bar">
-        <div class="nav-buttons">
-            <button class="btn" title="Back"><span class="material-symbols-outlined">arrow_back</span></button>
-            <button class="btn" title="Forward"><span class="material-symbols-outlined">arrow_forward</span></button>
-            <button class="btn" title="Reload" onclick="reloadPage()"><span class="material-symbols-outlined">refresh</span></button>
-        </div>
-        
-        <div class="address-bar-container">
-            <span class="site-icon" id="barStatusIcon"><span class="material-symbols-outlined">lock</span></span>
-            <input type="text" class="address-input" id="urlInput" value="https://www.google.com" onkeydown="handleNavigation(event)">
-        </div>
+<dialog id="dlg">
+  <form method="dialog" id="dlgForm" style="display:block;border:0;padding:1rem">
+    <strong>Your chat settings</strong>
+    <label for="nameIn">Display name</label>
+    <input id="nameIn" maxlength="24" required>
+    <label for="roomIn">Room</label>
+    <input id="roomIn" maxlength="30" required>
+    <menu><button class="ghost" value="cancel" formnovalidate>Cancel</button><button class="ghost" value="ok" id="saveBtn">Save</button></menu>
+  </form>
+</dialog>
 
-        <div class="extension-shortcuts" id="shortcutBar"></div>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
+import { getDatabase, ref, push, query, limitToLast, onChildAdded, off, serverTimestamp, onValue } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js";
 
-        <div class="extensions-mgmt-container">
-            <button class="btn" id="puzzleBtn" title="Extensions" onclick="toggleExtensionsMenu()">
-                <span class="material-symbols-outlined">extension</span>
-            </button>
-            <div class="extensions-menu" id="extMenu">
-                <h4 style="margin-bottom: 8px; font-size: 14px; font-weight: 500; border-bottom: 1px solid #3c4043; padding-bottom: 6px;">Manage Extensions</h4>
-                <div id="installedList"></div>
-                <div class="upload-section">
-                    <label for="extUpload" class="upload-label">
-                        <span class="material-symbols-outlined" style="font-size: 16px;">upload_file</span>
-                        Install .html Extension
-                    </label>
-                    <input type="file" id="extUpload" accept=".html" style="display: none;" onchange="handleExtensionUpload(event)">
-                </div>
-            </div>
-        </div>
+// 1. Paste your Firebase web app config here (Project settings → Your apps).
+const firebaseConfig = {
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT.firebaseapp.com",
+  databaseURL: "https://YOUR_PROJECT-default-rtdb.firebaseio.com",
+  projectId: "YOUR_PROJECT",
+  appId: "YOUR_APP_ID"
+};
 
-        <div class="more-mgmt-container">
-            <button class="btn" id="moreBtn" title="Customize and control browser" onclick="toggleMoreMenu()">
-                <span class="material-symbols-outlined">more_vert</span>
-            </button>
-            <div class="more-menu" id="moreMenu">
-                <div class="more-item" onclick="openSettingsPage('appearance')">
-                    <span class="material-symbols-outlined">settings</span>
-                    <span>Settings</span>
-                </div>
-                <div class="more-item" onclick="openSettingsPage('extensions')">
-                    <span class="material-symbols-outlined">extension</span>
-                    <span>Manage Extensions</span>
-                </div>
-                <hr style="border: none; border-bottom: 1px solid #3c4043; margin: 4px 0;">
-                <div class="more-item" style="color: #ff6b6b;" onclick="resetBrowserData()">
-                    <span class="material-symbols-outlined" style="color: #ea4335;">restart_alt</span>
-                    <span>Reset Browser Data</span>
-                </div>
-            </div>
-        </div>
+const $ = id => document.getElementById(id);
+const list = $("list"), statusEl = $("status");
+let name = localStorage.getItem("chat:name") || "";
+let room = localStorage.getItem("chat:room") || "general";
+let uid = null, db = null, feed = null;
 
-        <div class="extension-popup-window" id="popupWindow">
-            <iframe id="popupIframe" class="popup-iframe" src="about:blank"></iframe>
-        </div>
-    </div>
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
+const syncOnline = () => $("banner").style.display = navigator.onLine ? "none" : "block";
+addEventListener("online", syncOnline); addEventListener("offline", syncOnline); syncOnline();
 
-    <div class="workspace">
-        <iframe id="browserFrame" class="browser-content" src="https://www.google.com/webhp?igu=1"></iframe>
-        
-        <div class="settings-page" id="settingsPage">
-            <div class="settings-sidebar">
-                <div class="settings-nav-item active" id="nav-appearance" onclick="switchSettingsSection('appearance')">
-                    <span class="material-symbols-outlined">palette</span>
-                    <span>Appearance</span>
-                </div>
-                <div class="settings-nav-item" id="nav-extensions" onclick="switchSettingsSection('extensions')">
-                    <span class="material-symbols-outlined">extension_setup</span>
-                    <span>Extensions</span>
-                </div>
-                <div class="settings-nav-item" id="nav-about" onclick="switchSettingsSection('about')">
-                    <span class="material-symbols-outlined">info</span>
-                    <span>About Browser</span>
-                </div>
-            </div>
-            <div class="settings-body">
-                <div class="settings-section active" id="sec-appearance">
-                    <h2>Appearance & Navigation</h2>
-                    <div class="settings-card">
-                        <div class="settings-row">
-                            <div class="settings-info">
-                                <h4>Default Homepage URL</h4>
-                                <p>Set the fallback launch domain address used when booting or resetting.</p>
-                            </div>
-                            <input type="text" class="settings-input" id="settingHomepage" value="https://www.google.com" onchange="saveGeneralSettings()">
-                        </div>
-                        <div class="settings-row">
-                            <div class="settings-info">
-                                <h4>Default Sidebar Sizing Profile</h4>
-                                <p>Select standard layout window parameters for side panel attachments.</p>
-                            </div>
-                            <select id="settingSidebarSize" onchange="applySidebarSizePreset()">
-                                <option value="260">Narrow (260px)</option>
-                                <option value="320" selected>Standard (320px)</option>
-                                <option value="450">Wide (450px)</option>
-                            </select>
-                        </div>
-                    </div>
-                </div>
+if (firebaseConfig.apiKey === "YOUR_API_KEY") {
+  $("setup").style.display = "block"; list.style.display = "none"; $("form").style.display = "none";
+  statusEl.textContent = "Not configured";
+} else start();
 
-                <div class="settings-section" id="sec-extensions">
-                    <h2>Installed System Extension Modules</h2>
-                    <p style="font-size: 13px; color: #5f6368; margin-bottom: 16px;">Detailed structural inspection index for developer components injected into this sandbox container layout instance.</p>
-                    <div id="settingsExtensionsContainer"></div>
-                </div>
+async function start() {
+  const app = initializeApp(firebaseConfig);
+  db = getDatabase(app);
+  try {
+    const cred = await signInAnonymously(getAuth(app));
+    uid = cred.user.uid;
+  } catch (e) {
+    statusEl.textContent = "Sign-in failed. Enable Anonymous auth in Firebase.";
+    return;
+  }
+  onValue(ref(db, ".info/connected"), s => { statusEl.textContent = (s.val() ? "Online" : "Reconnecting…") + " · #" + room; });
+  if (!name) openSettings(); else joinRoom();
+}
 
-                <div class="settings-section" id="sec-about">
-                    <h2>About MockChrome OS</h2>
-                    <div class="settings-card" style="text-align: center; padding: 30px 0;">
-                        <span class="material-symbols-outlined" style="font-size: 64px; color: #1a73e8; margin-bottom: 12px;">split_scene</span>
-                        <h3 style="font-size: 18px; font-weight: 500; margin-bottom: 6px;">Mock Browser Runtime Engine</h3>
-                        <p style="font-size: 13px; color: #5f6368; margin-bottom: 24px;">Version 2026.4.12 (Official Build) (64-bit)</p>
-                        <button class="settings-btn danger" onclick="resetBrowserData()">Reset All Profiles & Application Cache</button>
-                    </div>
-                </div>
-            </div>
-        </div>
+function joinRoom() {
+  if (feed) off(feed);
+  list.replaceChildren();
+  showEmpty();
+  $("title").firstChild.textContent = "#" + room;
+  const base = ref(db, `rooms/${room}/messages`);
+  feed = query(base, limitToLast(100));
+  onChildAdded(feed, snap => addMessage(snap.val()));
+}
 
-        <div class="sidebar-resizer" id="sidebarResizer"></div>
-        <div class="sidebar-panel" id="sidebarPanel">
-            <iframe id="sidebarIframe" class="sidebar-iframe" src="about:blank"></iframe>
-        </div>
-    </div>
+function showEmpty() {
+  const p = document.createElement("p");
+  p.className = "empty"; p.id = "empty"; p.textContent = "No messages yet. Say hello.";
+  list.append(p);
+}
 
-    <script>
-        const iframe = document.getElementById('browserFrame');
-        const urlInput = document.getElementById('urlInput');
-        const barStatusIcon = document.getElementById('barStatusIcon');
-        
-        // Settings Layout Controls
-        const settingsPage = document.getElementById('settingsPage');
-        const settingHomepage = document.getElementById('settingHomepage');
-        const settingSidebarSize = document.getElementById('settingSidebarSize');
-        const settingsExtensionsContainer = document.getElementById('settingsExtensionsContainer');
+function addMessage(m) {
+  $("empty")?.remove();
+  const near = list.scrollHeight - list.scrollTop - list.clientHeight < 120;
+  const el = document.createElement("div");
+  el.className = "msg" + (m.uid === uid ? " me" : "");
+  if (m.uid !== uid) { const w = document.createElement("span"); w.className = "who"; w.textContent = m.name; el.append(w); }
+  el.append(document.createTextNode(m.text));
+  const t = document.createElement("time");
+  t.textContent = m.ts ? new Date(m.ts).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) : "";
+  el.append(t);
+  list.append(el);
+  if (near || m.uid === uid) list.scrollTop = list.scrollHeight;
+}
 
-        // Dropdowns & Windows
-        const extMenu = document.getElementById('extMenu');
-        const moreMenu = document.getElementById('moreMenu');
-        const shortcutBar = document.getElementById('shortcutBar');
-        const installedList = document.getElementById('installedList');
-        const popupWindow = document.getElementById('popupWindow');
-        const popupIframe = document.getElementById('popupIframe');
-        const sidebarPanel = document.getElementById('sidebarPanel');
-        const sidebarIframe = document.getElementById('sidebarIframe');
-        const sidebarResizer = document.getElementById('sidebarResizer');
+$("form").addEventListener("submit", e => {
+  e.preventDefault();
+  const text = $("text").value.trim();
+  if (!text || !uid) return;
+  $("text").value = "";
+  push(ref(db, `rooms/${room}/messages`), { uid, name, text, ts: serverTimestamp() });
+});
 
-        let extensionsDatabase = {};
-        let isResizing = false;
-
-        // --- Core Boot Initialization ---
-        window.addEventListener('DOMContentLoaded', () => {
-            // Restore config variables
-            const savedHomepage = localStorage.getItem('chrome_homepage');
-            if (savedHomepage) {
-                settingHomepage.value = savedHomepage;
-                iframe.src = savedHomepage;
-                urlInput.value = savedHomepage;
-            }
-
-            const savedWidth = localStorage.getItem('chrome_sidebar_width');
-            if (savedWidth) sidebarPanel.style.width = savedWidth + 'px';
-
-            // Reconstruct Blobs from database
-            const savedExtensions = localStorage.getItem('chrome_saved_extensions');
-            if (savedExtensions) {
-                const parsedData = JSON.parse(savedExtensions);
-                Object.keys(parsedData).forEach(id => {
-                    const ext = parsedData[id];
-                    const blob = new Blob([ext.rawHtml], { type: 'text/html' });
-                    const blobURL = URL.createObjectURL(blob);
-
-                    extensionsDatabase[id] = {
-                        name: ext.name,
-                        rawHtml: ext.rawHtml,
-                        url: blobURL,
-                        displayType: ext.displayType,
-                        pinned: ext.pinned !== undefined ? ext.pinned : true
-                    };
-                });
-                renderExtensionsUI();
-            }
-        });
-
-        // --- Draggable Sidebar Logic ---
-        sidebarResizer.addEventListener('mousedown', (e) => {
-            isResizing = true;
-            sidebarResizer.classList.add('dragging');
-            document.body.style.cursor = 'col-resize';
-            e.preventDefault();
-        });
-
-        document.addEventListener('mousemove', (e) => {
-            if (!isResizing) return;
-            const newWidth = window.innerWidth - e.clientX;
-            if (newWidth > 200 && newWidth < (window.innerWidth * 0.7)) {
-                sidebarPanel.style.width = newWidth + 'px';
-                localStorage.setItem('chrome_sidebar_width', newWidth);
-            }
-        });
-
-        document.addEventListener('mouseup', () => {
-            if (isResizing) {
-                isResizing = false;
-                sidebarResizer.classList.remove('dragging');
-                document.body.style.cursor = 'default';
-            }
-        });
-
-        // --- Tab Control Navigation Engine ---
-        function handleNavigation(event) {
-            if (event.key === 'Enter') {
-                closeSettingsPage(); // If they type a URL, slide away the settings menu panel view
-                let url = urlInput.value.trim();
-                if (!url.startsWith('http://') && !url.startsWith('https://') && !url.endsWith('.html')) {
-                    url = 'https://' + url;
-                }
-                urlInput.value = url;
-                iframe.src = url;
-            }
-        }
-
-        function reloadPage() { 
-            if (settingsPage.classList.contains('active')) {
-                location.reload();
-            } else {
-                iframe.src = iframe.src; 
-            }
-        }
-
-        // Opens core Settings Dashboard View Tab
-        function openSettingsPage(targetSection = 'appearance') {
-            settingsPage.classList.add('active');
-            iframe.classList.add('hidden'); // Hide active Web Window context
-            
-            urlInput.value = "chrome://settings";
-            barStatusIcon.innerHTML = `<span class="material-symbols-outlined" style="color:#1a73e8;">settings</span>`;
-            
-            moreMenu.classList.remove('show');
-            switchSettingsSection(targetSection);
-        }
-
-        function closeSettingsPage() {
-            settingsPage.classList.remove('active');
-            iframe.classList.remove('hidden');
-            barStatusIcon.innerHTML = `<span class="material-symbols-outlined">lock</span>`;
-        }
-
-        function switchSettingsSection(sectionId) {
-            document.querySelectorAll('.settings-nav-item').forEach(el => el.classList.remove('active'));
-            document.querySelectorAll('.settings-section').forEach(el => el.classList.remove('active'));
-            
-            document.getElementById(`nav-${sectionId}`).classList.add('active');
-            document.getElementById(`sec-${sectionId}`).classList.add('active');
-
-            if (sectionId === 'extensions') renderDetailedSettingsExtensionsIndex();
-        }
-
-        function saveGeneralSettings() {
-            localStorage.setItem('chrome_homepage', settingHomepage.value);
-        }
-
-        function applySidebarSizePreset() {
-            const size = settingSidebarSize.value;
-            sidebarPanel.style.width = size + 'px';
-            localStorage.setItem('chrome_sidebar_width', size);
-        }
-
-        function toggleExtensionsMenu() { extMenu.classList.toggle('show'); moreMenu.classList.remove('show'); popupWindow.classList.remove('show'); }
-        function toggleMoreMenu() { moreMenu.classList.toggle('show'); extMenu.classList.remove('show'); popupWindow.classList.remove('show'); }
-
-        function resetBrowserData() {
-            if (confirm("Reset application variables back to defaults?\n\nThis removes homepage choices, layout properties, and all installed custom extension scripts.")) {
-                localStorage.clear();
-                location.reload();
-            }
-        }
-
-        // --- Extensions Processing Core ---
-        function handleExtensionUpload(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const fileRawContent = e.target.result;
-                const extensionId = 'ext_' + Date.now();
-                const extensionName = file.name.replace('.html', '');
-
-                const loadAsSidebar = confirm(`Open "${extensionName}" inside a split-screen SIDEBAR?\n\n(Cancel loads it as a floating Popup instead)`);
-
-                const blob = new Blob([fileRawContent], { type: 'text/html' });
-                const blobURL = URL.createObjectURL(blob);
-
-                extensionsDatabase[extensionId] = {
-                    name: extensionName,
-                    rawHtml: fileRawContent,
-                    url: blobURL,
-                    displayType: loadAsSidebar ? 'sidebar' : 'popup',
-                    pinned: true
-                };
-
-                saveExtensionsToStorage();
-                renderExtensionsUI();
-                if (settingsPage.classList.contains('active')) renderDetailedSettingsExtensionsIndex();
-            };
-            reader.readAsText(file);
-            event.target.value = ''; 
-        }
-
-        function saveExtensionsToStorage() {
-            const exportableData = {};
-            Object.keys(extensionsDatabase).forEach(id => {
-                const ext = extensionsDatabase[id];
-                exportableData[id] = { name: ext.name, rawHtml: ext.rawHtml, displayType: ext.displayType, pinned: ext.pinned };
-            });
-            localStorage.setItem('chrome_saved_extensions', JSON.stringify(exportableData));
-        }
-
-        function togglePin(id) {
-            extensionsDatabase[id].pinned = !extensionsDatabase[id].pinned;
-            saveExtensionsToStorage();
-            renderExtensionsUI();
-        }
-
-        function deleteExtension(id) {
-            delete extensionsDatabase[id];
-            saveExtensionsToStorage();
-            
-            sidebarPanel.style.display = 'none';
-            sidebarResizer.style.display = 'none';
-            popupWindow.classList.remove('show');
-            
-            renderExtensionsUI();
-            if (settingsPage.classList.contains('active')) renderDetailedSettingsExtensionsIndex();
-        }
-
-        // --- Render UI Arrays ---
-        function renderExtensionsUI() {
-            installedList.innerHTML = '';
-            shortcutBar.innerHTML = '';
-            
-            const keys = Object.keys(extensionsDatabase);
-            if(keys.length === 0) {
-                installedList.innerHTML = '<p style="font-size: 12px; color: #9aa0a6; text-align: center; padding: 10px 0;">No extensions installed.</p>';
-                return;
-            }
-
-            keys.forEach(id => {
-                const ext = extensionsDatabase[id];
-                const item = document.createElement('div');
-                item.className = 'extension-list-item';
-                item.innerHTML = `
-                    <div style="cursor:pointer;" onclick="triggerExtensionDisplay('${id}')">
-                        <span>🧩</span> <strong>${ext.name}</strong> <span style="font-size:10px; color:#9aa0a6;">(${ext.displayType})</span>
-                    </div>
-                    <div class="action-cluster">
-                        <button class="pin-btn ${ext.pinned ? 'active' : ''}" onclick="togglePin('${id}')">
-                            <span class="material-symbols-outlined" style="${ext.pinned ? 'font-variation-settings: \'FILL\' 1;' : ''}">push_pin</span>
-                        </button>
-                        <button class="delete-ext-btn" onclick="deleteExtension('${id}')"><span class="material-symbols-outlined">delete</span></button>
-                    </div>
-                `;
-                installedList.appendChild(item);
-
-                if (ext.pinned) {
-                    const shortcut = document.createElement('button');
-                    shortcut.className = 'btn ext-shortcut-btn';
-                    shortcut.title = ext.name;
-                    shortcut.innerHTML = `<span class="material-symbols-outlined">${ext.displayType === 'sidebar' ? 'dock_to_left' : 'deployed_code'}</span>`;
-                    shortcut.onclick = (e) => { e.stopPropagation(); triggerExtensionDisplay(id); };
-                    shortcutBar.appendChild(shortcut);
-                }
-            });
-        }
-
-        // NEW: Generates inside the dedicated Settings UI Panel View
-        function renderDetailedSettingsExtensionsIndex() {
-            settingsExtensionsContainer.innerHTML = '';
-            const keys = Object.keys(extensionsDatabase);
-
-            if (keys.length === 0) {
-                settingsExtensionsContainer.innerHTML = `
-                    <div class="settings-card" style="text-align:center; padding:30px; color:#5f6368; font-size:14px;">
-                        No extensions currently deployed. Open the top bar puzzle menu to load .html modules.
-                    </div>`;
-                return;
-            }
-
-            keys.forEach(id => {
-                const ext = extensionsDatabase[id];
-                const card = document.createElement('div');
-                card.className = 'settings-card';
-                card.innerHTML = `
-                    <div style="display:flex; justify-content:space-between; align-items:flex-start;">
-                        <div>
-                            <h3 style="font-size:15px; font-weight:500; margin-bottom:4px; display:flex; align-items:center; gap:6px;">🧩 ${ext.name}</h3>
-                            <p style="font-size:12px; color:#5f6368; margin-bottom:8px;">ID Parameter Reference: <code>${id}</code></p>
-                            <span style="font-size:11px; background-color:#e8f0fe; color:#1a73e8; padding:2px 8px; border-radius:100px; font-weight:500; text-transform:uppercase;">Container Targeting: ${ext.displayType}</span>
-                        </div>
-                        <button class="settings-btn danger" style="padding:6px 12px; font-size:12px;" onclick="deleteExtension('${id}')">Remove Module</button>
-                    </div>
-                `;
-                settingsExtensionsContainer.appendChild(card);
-            });
-        }
-
-        function triggerExtensionDisplay(id) {
-            const ext = extensionsDatabase[id];
-            closeSettingsPage(); // Viewing an extension exits the settings environment
-
-            if (ext.displayType === 'sidebar') {
-                popupWindow.classList.remove('show');
-                if (sidebarPanel.style.display === 'block' && sidebarIframe.src === ext.url) {
-                    sidebarPanel.style.display = 'none';
-                    sidebarResizer.style.display = 'none';
-                    sidebarIframe.src = "about:blank";
-                } else {
-                    sidebarIframe.src = ext.url;
-                    sidebarPanel.style.display = 'block';
-                    sidebarResizer.style.display = 'block';
-                }
-            } else {
-                sidebarPanel.style.display = 'none';
-                sidebarResizer.style.display = 'none';
-                if (popupWindow.classList.contains('show') && popupIframe.src === ext.url) {
-                    popupWindow.classList.remove('show');
-                    popupIframe.src = "about:blank";
-                } else {
-                    popupIframe.src = ext.url;
-                    popupWindow.classList.add('show');
-                    extMenu.classList.remove('show'); 
-                    moreMenu.classList.remove('show');
-                }
-            }
-        }
-
-        window.onclick = function(event) {
-            if (!event.target.closest('.extensions-mgmt-container') && 
-                !event.target.closest('.more-mgmt-container') && 
-                !event.target.closest('.extension-popup-window') && 
-                !event.target.closest('.ext-shortcut-btn')) {
-                extMenu.classList.remove('show');
-                moreMenu.classList.remove('show');
-                popupWindow.classList.remove('show');
-            }
-        }
-    </script>
+function openSettings() {
+  $("nameIn").value = name; $("roomIn").value = room;
+  $("dlg").showModal();
+}
+$("settingsBtn").onclick = () => db ? openSettings() : null;
+$("dlg").addEventListener("close", () => {
+  if ($("dlg").returnValue !== "ok") { if (!name) openSettings(); return; }
+  const n = $("nameIn").value.trim().slice(0, 24);
+  const r = $("roomIn").value.trim().toLowerCase().replace(/[^a-z0-9_-]/g, "-").slice(0, 30);
+  if (!n || !r) return openSettings();
+  name = n; room = r;
+  localStorage.setItem("chat:name", name); localStorage.setItem("chat:room", room);
+  joinRoom();
+});
+</script>
 </body>
 </html>
