@@ -3,169 +3,204 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#12343b">
-<title>Chat</title>
-<link rel="manifest" href="manifest.json">
-<link rel="icon" href="icon.svg" type="image/svg+xml">
-<link rel="apple-touch-icon" href="icon.svg">
-<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Browser AI</title>
 <style>
-:root{--ink:#12343b;--paper:#f3efe6;--card:#fffdf8;--mine:#12343b;--mine-t:#f3efe6;--accent:#e08e2b;--mute:#6b7b7e;--line:#ddd6c6}
-@media(prefers-color-scheme:dark){:root{--ink:#e8e4d8;--paper:#0e1f23;--card:#17292e;--mine:#e08e2b;--mine-t:#1b1203;--accent:#e08e2b;--mute:#8fa1a4;--line:#27393e}}
+:root{--bg:#eef1f6;--panel:#fff;--ink:#17202e;--mute:#5b667a;--acc:#2f5bea;--line:#d5dbe6;--code:#0f1623;--codeink:#e3e9f5;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#12161d;--panel:#1b212b;--ink:#e6eaf2;--mute:#97a2b8;--acc:#7ea2ff;--line:#2d3644;--code:#0a0e15}}
+:root[data-theme="dark"]{--bg:#12161d;--panel:#1b212b;--ink:#e6eaf2;--mute:#97a2b8;--acc:#7ea2ff;--line:#2d3644;--code:#0a0e15}
 *{box-sizing:border-box}
 html,body{height:100%;margin:0}
-body{font:16px/1.4 Georgia,"Iowan Old Style",serif;background:var(--paper);color:var(--ink);display:flex;flex-direction:column;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
-header{display:flex;align-items:center;gap:.75rem;padding:.7rem 1rem;border-bottom:1px solid var(--line)}
-header h1{font-size:1.15rem;margin:0;flex:1}
-header small{display:block;font:.75rem system-ui,sans-serif;color:var(--mute)}
-button,input{font:inherit;color:inherit}
-.ghost{background:none;border:1px solid var(--line);border-radius:8px;padding:.35rem .7rem;font:.85rem system-ui,sans-serif;cursor:pointer}
-#banner{display:none;background:var(--accent);color:#1b1203;font:.85rem system-ui,sans-serif;padding:.4rem 1rem;text-align:center}
-#list{flex:1;overflow-y:auto;padding:1rem;display:flex;flex-direction:column;gap:.35rem}
-.msg{max-width:80%;padding:.5rem .8rem;border-radius:14px;background:var(--card);border:1px solid var(--line);align-self:flex-start;overflow-wrap:anywhere;white-space:pre-wrap}
-.msg.me{align-self:flex-end;background:var(--mine);color:var(--mine-t);border-color:transparent}
-.msg .who{display:block;font:600 .72rem system-ui,sans-serif;color:var(--accent);margin-bottom:.1rem}
-.msg time{display:block;font:.68rem system-ui,sans-serif;opacity:.6;margin-top:.15rem;text-align:right}
-.empty{margin:auto;color:var(--mute);text-align:center}
-form{display:flex;gap:.5rem;padding:.7rem 1rem;border-top:1px solid var(--line)}
-form input{flex:1;min-width:0;padding:.65rem .9rem;border-radius:999px;border:1px solid var(--line);background:var(--card)}
-form button{border:0;border-radius:999px;background:var(--accent);color:#1b1203;font-weight:700;padding:0 1.2rem;cursor:pointer}
-form button:disabled{opacity:.5}
-:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-dialog{border:1px solid var(--line);border-radius:14px;background:var(--card);color:var(--ink);max-width:22rem;width:calc(100% - 2rem)}
-dialog::backdrop{background:#0008}
-dialog label{display:block;font:.8rem system-ui,sans-serif;color:var(--mute);margin:.7rem 0 .25rem}
-dialog input{width:100%;padding:.55rem .7rem;border-radius:8px;border:1px solid var(--line);background:var(--paper)}
-dialog menu{display:flex;justify-content:flex-end;gap:.5rem;margin:1rem 0 0;padding:0}
-#setup{display:none;margin:auto;max-width:28rem;padding:1.5rem}
-#setup code{background:var(--card);padding:.1rem .3rem;border-radius:4px}
+body{background:var(--bg);color:var(--ink);font:16px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif;display:flex;flex-direction:column}
+header{padding:12px 16px;border-bottom:1px solid var(--line);background:var(--panel)}
+header h1{font-size:18px;margin:0 0 8px}
+.bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+input{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:7px;flex:1 1 220px;min-width:0}
+summary{cursor:pointer;font-size:14px;color:var(--acc);margin-top:8px}
+select,textarea{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:7px}
+select{max-width:100%;flex:1 1 260px}
+button{font:inherit;font-weight:600;border:0;border-radius:6px;padding:8px 14px;background:var(--acc);color:#fff;cursor:pointer}
+button.alt{background:transparent;color:var(--acc);border:1px solid var(--acc)}
+button.sm{font-size:12px;padding:3px 9px}
+button:disabled{opacity:.5;cursor:default}
+:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+progress{width:100%;height:6px;margin-top:8px;accent-color:var(--acc)}
+#status{font-size:13px;color:var(--mute);margin-top:4px}
+#chat{flex:1;overflow-y:auto;padding:16px;max-width:900px;width:100%;margin:0 auto}
+.msg{margin-bottom:16px}
+.who{font-size:13px;color:var(--mute);margin-bottom:2px}
+.txt{white-space:pre-wrap;overflow-wrap:anywhere}
+.code{background:var(--code);color:var(--codeink);border-radius:8px;margin:8px 0;overflow:hidden}
+.code .h{display:flex;gap:6px;align-items:center;padding:4px 8px;font-size:12px;color:#9aa7c0;border-bottom:1px solid #26314a}
+.code .h span{flex:1}
+.code pre{margin:0;padding:10px 12px;overflow-x:auto;font:13px/1.5 ui-monospace,Menlo,Consolas,monospace}
+.run{padding:8px 12px;font:13px/1.5 ui-monospace,Menlo,monospace;white-space:pre-wrap;border-top:1px solid #26314a;color:#b9f0c8}
+iframe{width:100%;height:320px;border:0;background:#fff;display:block}
+form{display:flex;gap:8px;padding:12px 16px;border-top:1px solid var(--line);background:var(--panel)}
+form textarea{flex:1;height:52px;resize:none}
+#warn{color:#c2410c;font-size:14px;margin-top:6px}
 </style>
 </head>
 <body>
 <header>
-  <h1 id="title">Chat<small id="status">Connecting…</small></h1>
-  <button class="ghost" id="settingsBtn">Settings</button>
-</header>
-<div id="banner">You’re offline. Messages will send when you reconnect.</div>
-<div id="setup">
-  <h2>Add your Firebase config</h2>
-  <p>Open <code>index.html</code> and paste your web app’s config into <code>firebaseConfig</code>. The README lists the steps and the database rules to use.</p>
+<h1>Browser AI</h1>
+<div class="bar">
+<select id="model" aria-label="Model"></select>
+<label style="font-size:14px;display:flex;gap:6px;align-items:center"><input type="checkbox" id="light" style="flex:none;padding:0"> Light models only (under 1.5 GB)</label>
+<button id="load">Load model</button>
 </div>
-<main id="list" aria-live="polite"></main>
-<form id="form" autocomplete="off">
-  <input id="text" maxlength="500" placeholder="Write a message" aria-label="Message" required>
-  <button id="send" type="submit">Send</button>
+<details id="custom"><summary>Use a model that is not in the list</summary>
+<div class="bar" style="margin-top:6px">
+<input id="cid" placeholder="Model ID, e.g. gemma-3-1b-it-q4f16_1-MLC">
+<input id="curl" placeholder="Model files URL (Hugging Face .../resolve/main/)">
+<input id="clib" placeholder="Model library URL (.wasm file)">
+</div>
+<div id="note" style="font-size:13px;color:var(--mute);margin-top:4px">Fill all three to load a custom MLC model. Leave them empty to use the dropdown.</div>
+</details>
+<progress id="prog" value="0" max="1" hidden></progress>
+<div id="status">Pick a model and press Load. The first load downloads it, and later loads use the browser cache.</div>
+<div id="warn" hidden></div>
+</header>
+
+<div id="chat" aria-live="polite"></div>
+
+<form id="form">
+<textarea id="input" placeholder="Ask for code, e.g. write a JavaScript function that finds prime numbers" disabled></textarea>
+<button id="send" disabled>Send</button>
+<button id="stop" type="button" class="alt" hidden>Stop</button>
+<button id="clear" type="button" class="alt">Clear</button>
 </form>
 
-<dialog id="dlg">
-  <form method="dialog" id="dlgForm" style="display:block;border:0;padding:1rem">
-    <strong>Your chat settings</strong>
-    <label for="nameIn">Display name</label>
-    <input id="nameIn" maxlength="24" required>
-    <label for="roomIn">Room</label>
-    <input id="roomIn" maxlength="30" required>
-    <menu><button class="ghost" value="cancel" formnovalidate>Cancel</button><button class="ghost" value="ok" id="saveBtn">Save</button></menu>
-  </form>
-</dialog>
-
 <script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
-import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
-import { getDatabase, ref, push, query, limitToLast, onChildAdded, off, serverTimestamp, onValue } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js";
+const $ = id => document.getElementById(id);
+const SYSTEM = "You are an expert programmer. Answer with correct, complete, runnable code in fenced code blocks with a language tag, followed by a two or three sentence explanation. Prefer simple solutions. For web pages, give one self-contained HTML file.";
+let webllm, engine, busy = false;
+const CHAT = "You are a friendly, helpful assistant. Keep answers clear and concise.";
+let currentId = "";
+let history = [{role: "system", content: SYSTEM}];
 
-// 1. Paste your Firebase web app config here (Project settings → Your apps).
-const firebaseConfig = {
-  apiKey: "AIzaSyDwDe910zdnwDi8Cns-AFkCMZbxXzddJuA",
-  authDomain: "server-bc966.firebaseapp.com",
-  databaseURL: "https://server-bc966-default-rtdb.firebaseio.com",
-  projectId: "server-bc966",
-  storageBucket: "server-bc966.firebasestorage.app",
-  messagingSenderId: "658451047484",
-  appId: "1:658451047484:web:38d3fa3cd5b969b9d6cf39",
-  measurementId: "G-G9C9095FEH"
+if (!navigator.gpu) {
+  $("warn").hidden = false;
+  $("warn").textContent = "WebGPU is not available in this browser. Use a recent desktop Chrome or Edge, and open this page over https or localhost.";
+}
+
+try {
+  webllm = await import("https://esm.run/@mlc-ai/web-llm");
+  const all = webllm.prebuiltAppConfig.model_list;
+  const ad = navigator.gpu ? await navigator.gpu.requestAdapter() : null;
+  const f16 = !!(ad && ad.features.has("shader-f16"));
+  const fmt = f16 ? "q4f16" : "q4f32", q0 = f16 ? "q0f16" : "q0f32";
+  const ok = m => m.model_id.includes(fmt) || (m.model_id.includes(q0) && (m.vram_required_MB || 0) < 1000);
+  const byMem = (x, y) => (x.vram_required_MB || 0) - (y.vram_required_MB || 0);
+  const opt = m => {
+    const gb = m.vram_required_MB ? ` (about ${(m.vram_required_MB / 1024).toFixed(1)} GB GPU memory)` : "";
+    return `<option value="${m.model_id}">${m.model_id.replace("-MLC", "")}${gb}</option>`;
+  };
+  const grp = (t, l) => l.length ? `<optgroup label="${t}">${l.sort(byMem).map(opt).join("")}</optgroup>` : "";
+  const render = () => {
+    const keep = m => ok(m) && (!$("light").checked || (m.vram_required_MB || 0) < 1500);
+    const coders = all.filter(m => /coder/i.test(m.model_id) && keep(m));
+    const chats = all.filter(m => !/coder|vision|math|embed|llava|deepseek|snowflake/i.test(m.model_id) && keep(m));
+    $("model").innerHTML = grp("Coding models", coders) + grp("Chat models", chats) || all.map(opt).join("");
+  };
+  render();
+  $("light").onchange = () => { render(); $("model").selectedIndex = 0; };
+  if (![...$("model").options].some(o => /gemma-3/i.test(o.value))) $("note").textContent = "Gemma 3 is not in this version of WebLLM’s built-in list. To use it, fill all three fields with an MLC build and its matching library file.";
+  const pick = [...$("model").options].find(o => /Coder-1\.5B/i.test(o.value));
+  if (pick) pick.selected = true;
+} catch (e) {
+  $("status").textContent = "Could not load the WebLLM library. Check your connection and that this page is not running inside a sandbox.";
+  $("load").disabled = true;
+}
+
+$("load").onclick = async () => {
+  const cid = $("cid").value.trim(), curl = $("curl").value.trim(), clib = $("clib").value.trim();
+  const custom = !!(cid && curl && clib), id = custom ? cid : $("model").value;
+  const coder = /coder/i.test(id); currentId = id;
+  history[0].content = coder ? SYSTEM : CHAT;
+  $("input").placeholder = coder ? "Ask for code, e.g. write a JavaScript function that finds prime numbers" : "Message the model";
+  $("load").disabled = true; $("prog").hidden = false;
+  try {
+    if (engine) { try { await engine.unload(); } catch (e) {} }
+    const cfg = {initProgressCallback: p => { $("prog").value = p.progress; $("status").textContent = p.text; }};
+    if (custom) {
+      const base = webllm.prebuiltAppConfig;
+      const entry = {model: curl.endsWith("/") ? curl : curl + "/", model_id: cid, model_lib: clib};
+      if (/f16/i.test(cid)) entry.required_features = ["shader-f16"];
+      cfg.appConfig = {...base, model_list: [...base.model_list, entry]};
+    }
+    engine = await webllm.CreateMLCEngine(id, cfg);
+    $("status").textContent = "Ready. " + id.replace("-MLC", "");
+    $("prog").hidden = true; $("input").disabled = false; $("send").disabled = false; $("input").focus();
+  } catch (e) {
+    $("status").textContent = "Load failed: " + e.message;
+  }
+  $("load").disabled = false;
 };
 
-const $ = id => document.getElementById(id);
-const list = $("list"), statusEl = $("status");
-let name = localStorage.getItem("chat:name") || "";
-let room = localStorage.getItem("chat:room") || "general";
-let uid = null, db = null, feed = null;
+function toolbar(label, fn) {
+  const b = document.createElement("button");
+  b.type = "button"; b.className = "alt sm"; b.textContent = label; b.onclick = () => fn(b);
+  return b;
+}
 
-if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
-const syncOnline = () => $("banner").style.display = navigator.onLine ? "none" : "block";
-addEventListener("online", syncOnline); addEventListener("offline", syncOnline); syncOnline();
+function runJS(code, out) {
+  out.textContent = "";
+  const src = "console.log=console.error=console.warn=(...a)=>postMessage(a.map(x=>typeof x==='object'?JSON.stringify(x):String(x)).join(' '));onmessage=e=>{try{(0,eval)(e.data)}catch(x){postMessage('Error: '+x.message)}postMessage(null)}";
+  const w = new Worker(URL.createObjectURL(new Blob([src])));
+  const t = setTimeout(() => { w.terminate(); out.textContent += "\nStopped after 5 seconds."; }, 5000);
+  w.onmessage = e => { if (e.data === null) { clearTimeout(t); w.terminate(); if (!out.textContent) out.textContent = "(no output)"; } else out.textContent += e.data + "\n"; };
+  w.postMessage(code);
+}
 
-if (firebaseConfig.apiKey === "YOUR_API_KEY") {
-  $("setup").style.display = "block"; list.style.display = "none"; $("form").style.display = "none";
-  statusEl.textContent = "Not configured";
-} else start();
-
-async function start() {
-  const app = initializeApp(firebaseConfig);
-  db = getDatabase(app);
-  try {
-    const cred = await signInAnonymously(getAuth(app));
-    uid = cred.user.uid;
-  } catch (e) {
-    statusEl.textContent = "Sign-in failed. Enable Anonymous auth in Firebase.";
-    return;
+function render(el, text) {
+  el.textContent = "";
+  let last = 0;
+  const addText = s => { if (!s.trim()) return; const d = document.createElement("div"); d.className = "txt"; d.textContent = s.trim(); el.append(d); };
+  for (const m of text.matchAll(/```([\w+-]*)\n?([\s\S]*?)(?:```|$)/g)) {
+    addText(text.slice(last, m.index)); last = m.index + m[0].length;
+    const lang = m[1].toLowerCase(), code = m[2].replace(/\n$/, "");
+    const box = document.createElement("div"); box.className = "code";
+    const h = document.createElement("div"); h.className = "h";
+    const l = document.createElement("span"); l.textContent = lang || "code"; h.append(l);
+    const pre = document.createElement("pre"); pre.textContent = code;
+    const extra = document.createElement("div");
+    h.append(toolbar("Copy", async b => { try { await navigator.clipboard.writeText(code); b.textContent = "Copied"; } catch (e) { b.textContent = "Select text"; } setTimeout(() => b.textContent = "Copy", 1500); }));
+    if (!busy && /^(js|javascript)$/.test(lang)) h.append(toolbar("Run", () => { extra.innerHTML = ""; const o = document.createElement("div"); o.className = "run"; extra.append(o); runJS(code, o); }));
+    if (!busy && lang === "html") h.append(toolbar("Preview", () => { extra.innerHTML = ""; const f = document.createElement("iframe"); f.sandbox = "allow-scripts"; f.srcdoc = code; extra.append(f); }));
+    box.append(h, pre, extra); el.append(box);
   }
-  onValue(ref(db, ".info/connected"), s => { statusEl.textContent = (s.val() ? "Online" : "Reconnecting…") + " · #" + room; });
-  if (!name) openSettings(); else joinRoom();
+  addText(text.slice(last));
 }
 
-function joinRoom() {
-  if (feed) off(feed);
-  list.replaceChildren();
-  showEmpty();
-  $("title").firstChild.textContent = "#" + room;
-  const base = ref(db, `rooms/${room}/messages`);
-  feed = query(base, limitToLast(100));
-  onChildAdded(feed, snap => addMessage(snap.val()));
+function addMsg(who) {
+  const d = document.createElement("div"); d.className = "msg";
+  const w = document.createElement("div"); w.className = "who"; w.textContent = who;
+  const body = document.createElement("div"); d.append(w, body); $("chat").append(d);
+  return body;
 }
 
-function showEmpty() {
-  const p = document.createElement("p");
-  p.className = "empty"; p.id = "empty"; p.textContent = "No messages yet. Say hello.";
-  list.append(p);
-}
-
-function addMessage(m) {
-  $("empty")?.remove();
-  const near = list.scrollHeight - list.scrollTop - list.clientHeight < 120;
-  const el = document.createElement("div");
-  el.className = "msg" + (m.uid === uid ? " me" : "");
-  if (m.uid !== uid) { const w = document.createElement("span"); w.className = "who"; w.textContent = m.name; el.append(w); }
-  el.append(document.createTextNode(m.text));
-  const t = document.createElement("time");
-  t.textContent = m.ts ? new Date(m.ts).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) : "";
-  el.append(t);
-  list.append(el);
-  if (near || m.uid === uid) list.scrollTop = list.scrollHeight;
-}
-
-$("form").addEventListener("submit", e => {
+$("form").onsubmit = async e => {
   e.preventDefault();
-  const text = $("text").value.trim();
-  if (!text || !uid) return;
-  $("text").value = "";
-  push(ref(db, `rooms/${room}/messages`), { uid, name, text, ts: serverTimestamp() });
-});
-
-function openSettings() {
-  $("nameIn").value = name; $("roomIn").value = room;
-  $("dlg").showModal();
-}
-$("settingsBtn").onclick = () => db ? openSettings() : null;
-$("dlg").addEventListener("close", () => {
-  if ($("dlg").returnValue !== "ok") { if (!name) openSettings(); return; }
-  const n = $("nameIn").value.trim().slice(0, 24);
-  const r = $("roomIn").value.trim().toLowerCase().replace(/[^a-z0-9_-]/g, "-").slice(0, 30);
-  if (!n || !r) return openSettings();
-  name = n; room = r;
-  localStorage.setItem("chat:name", name); localStorage.setItem("chat:room", room);
-  joinRoom();
-});
+  const q = $("input").value.trim();
+  if (!q || busy || !engine) return;
+  $("input").value = ""; history.push({role: "user", content: q});
+  addMsg("You").textContent = q;
+  const body = addMsg("AI"); let text = "", queued = false;
+  busy = true; $("send").hidden = true; $("stop").hidden = false;
+  try {
+    const stream = await engine.chat.completions.create({messages: [history[0], ...history.slice(1).slice(-7)], ...(/qwen3/i.test(currentId) ? {extra_body: {enable_thinking: false}} : {}), stream: true, stream_options: {include_usage: true}, temperature: 0.2, max_tokens: 1024});
+    for await (const c of stream) {
+      text += c.choices[0]?.delta?.content || ""; const tps = c.usage?.extra?.decode_tokens_per_s; if (tps) $("status").textContent = "Speed: " + tps.toFixed(1) + " tokens per second";
+      if (!queued) { queued = true; requestAnimationFrame(() => { queued = false; render(body, text); $("chat").scrollTop = 1e9; }); }
+    }
+  } catch (err) { text += "\n\nError: " + err.message; }
+  busy = false; $("send").hidden = false; $("stop").hidden = true;
+  history.push({role: "assistant", content: text}); render(body, text); $("chat").scrollTop = 1e9;
+};
+$("stop").onclick = () => engine && engine.interruptGenerate();
+$("clear").onclick = () => { history = [{role: "system", content: SYSTEM}]; $("chat").textContent = ""; };
+$("input").addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); $("form").requestSubmit(); } });
 </script>
 </body>
 </html>
